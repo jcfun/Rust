@@ -224,19 +224,20 @@ let z = '😂';
 
 
 
-+ **复合类型**
-  + 复合类型可以将多个值放在一个类型里
-  + Rust提供了两种基础的复合类型：元组（Tuple）、数组
-  + **Tuple**
-    + Tuple可以将多个类型的多个值放在同一个类型里
-    + Tuple的长度是固定的：一旦声明就无法改变
-    + 创建Tuple
-      + 在小括号里，将值用逗号分开
-      + Tuple中的每个位置都对应一个类型，Tuple中各元素的类型不必相同
-    + 获取Tuple的元素值
-      + 可以使用模式匹配来解构（destructure）一个Tuple来获取元素的值
-    + 访问Tuple的元素
-      + 在Tuple变量使用点标记法，后接元素的索引号
+#### 3.2.2 复合类型
+
++ 复合类型可以将多个值放在一个类型里
++ Rust提供了两种基础的复合类型：元组（Tuple）、数组
++ **Tuple**
+  + Tuple可以将多个类型的多个值放在同一个类型里
+  + Tuple的长度是固定的：一旦声明就无法改变
+  + 创建Tuple
+    + 在小括号里，将值用逗号分开
+    + Tuple中的每个位置都对应一个类型，Tuple中各元素的类型不必相同
+  + 获取Tuple的元素值
+    + 可以使用模式匹配来解构（destructure）一个Tuple来获取元素的值
+  + 访问Tuple的元素
+    + 在Tuple变量使用点标记法，后接元素的索引号
 
 ```rust
 let tup: (i32, f64, u8) = (500, 6.3, 1);
@@ -246,8 +247,6 @@ println!("{}, {}, {}", x, y, z);
 
 println!("{}, {}, {}", tup.0, tup.1, tup.2);
 ```
-
-
 
 
 
@@ -287,6 +286,164 @@ let first = a[0];
 let second = a[1];
 let third = a[27]; // index out of bounds
 ```
+
+### 3.3 函数与注释
+
+#### 3.3.1 函数
+
++ 声明函数使用`fn`关键字
++ 针对函数和变量名，Rust使用snake case命名规范：所有的字母都是小写的，单词之间使用下划线分开
++ **函数的参数**
+  + parameters、arguments
+  + 在函数签名里，必须声明每个参数的类型
+
+```rust
+fn another_function(x: i32, y: i32) {
+    println!("Another function!");
+    println!("the value of x and y is: {}, {}", x, y);
+}
+```
+
++ **函数体中的语句与表达式**
+  + 函数体由一系列语句组成，可选的有一个表达式结束
+  + Rust是一个基于表达式的语言
+  + 语句是执行一些动作的指令
+  + 表达式会计算产生一个值
+  + 函数的定义也是语句
+  + 语句不返回值，所以不可以使用`let`将语句赋值 给一个变量
+
+```rust
+// let x = (let y = 6); // expected expression, found statement (`let`)
+
+let y = {
+    let x = 1;
+    x + 3
+};
+```
+
++ 函数的返回值
+  + 在 `->`符号后面声明函数返回值的类型，但是不可以为返回值命名
+  + 在Rust中，返回值就是函数体里面最后一个表达式的值
+  + 若想提前返回，需使用return关键字，并指定一个值
+    + 大多数函数都是默认使用最后一个表达式作为返回值
+
+```rust
+fn five(x: i32) -> i32 {
+    5 + x
+}
+let x = five(6);
+println!("The value of x is {}", x);
+```
+
+#### 3.3.2 注释
+
+> 与C和Java一样
+
+### 3.4 流程控制
+
+#### 3.4.1 if表达式
+
++ `if`表达式允许你根据条件来执行不同的代码分支
+  + 这个条件必须是bool类型
++ `if`表达式中，与条件相关联的代码块就叫做分支（arm）
++ 可选的，可以在后面加上一个`else`表达式
+
+```rust
+let number = 3;
+
+if number < 5 {
+    println!("condition was true");
+} else {
+    println!("condition was false");
+}
+```
+
++ 使用`else if`处理多重条件
+  + 如果使用了多于一个`else if`，那么最好使用`match`来重构代码
++ 在`let`语句中使用`if`
+  + 因为`if`是一个表达式，所以可以将它放在`let`语句中等号的右边
+
+```rust
+let condition = true;
+let number = if condition {5} else {6};
+println!("The value of number is: {}", number);
+```
+
+#### 3.4.2 循环
+
++ Rust提供了3种循环：`loop`、`while`和`for`
++ **loop循环**
+  + `loop`关键字告诉Rust反复执行一块代码，直到你喊停
+  + 可以在`loop`循环中使用`break`关键字来告诉程序何时停止循环
+
+```rust
+ let mut counter = 0;
+
+let result = loop {
+    counter += 1;
+    if counter == 10 {
+        break counter * 2
+    }
+};
+
+println!("The result is: {}", result);
+```
+
++ **while条件循环**
+  + 另外的一种常见的循环模式是每次执行循环体之前都判断一次条件
+
+```rust
+let mut number = 3;
+while number != 0 {
+    println!("{}!", number);
+
+    number = number - 1;
+}
+
+println!("LIFTOFF!!!")
+```
+
++ **使用for循环遍历集合**
+  + 可以使用`while`或`loop`来遍历集合，但是易错且低效
+  + 使用`for`循环更简洁紧凑，它可以针对集合中的每个元素来执行一些代码
+  + 由于`for`循环的安全、简洁性，所以它在Rust里用的最多
+
+```rust
+let a = [10, 20, 30, 40, 50, 60];
+let mut index = 0;
+while index < a.len() {
+    println!("The value is: {}", a[index]);
+    index += 1;
+}
+
+for element in a.iter() {
+    println!("The value is: {}", element);
+}
+```
+
++ **Range**
+  + 由标准库提供
+  + 指定一个开始数字和一个结束数字，`Range`可以生成它们之间的数字（不含结束）
+  + `rev`方法可以反转`Range`
+
+```rust
+for number in (1 .. 4).rev() {
+    println!("{}!", number);
+}
+println!("LIFTOFF!!!");
+```
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
