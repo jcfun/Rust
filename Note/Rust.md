@@ -1759,7 +1759,7 @@ $ cargo run
 
 + 更良好的代码组织
 
-#### 5.3.2方法调用的运算符
+#### 5.3.2 方法调用的运算符
 
 + C/C++：`object -> something()` 就和 `(*object).something()`一样，需要先解引用（dereference）
 + Rust没有 `->`运算符
@@ -1772,43 +1772,43 @@ $ cargo run
 
 #### 5.3.3 方法参数
 
-+ 方法可以有多个参数
+方法可以有多个参数
 
-  ```rust
-  #[derive(Debug)]
-  struct Rectangle {
-      width: u32,
-      height: u32,
-  }
-  
-  impl Rectangle {
-      fn area(&self) -> u32 {
-          self.width * self.height
-      }
-  
-      fn can_hold(&self, other: &Rectangle) -> bool {
-          self.width > other.width && self.height > other.height
-      }
-  }
-  
-  fn main() {
-      let rect1 = Rectangle {
-          width: 30,
-          height: 50,
-      };
-      let rect2 = Rectangle {
-          width: 10,
-          height: 40,
-      };
-      let rect3 = Rectangle {
-          width: 60,
-          height: 45,
-      };
-  
-      println!("Can rect1 hold rect2? {}", rect1.can_hold(&rect2));
-      println!("Can rect1 hold rect3? {}", rect1.can_hold(&rect3));
-  }
-  ```
+```rust
+#[derive(Debug)]
+struct Rectangle {
+    width: u32,
+    height: u32,
+}
+
+impl Rectangle {
+    fn area(&self) -> u32 {
+        self.width * self.height
+    }
+
+    fn can_hold(&self, other: &Rectangle) -> bool {
+        self.width > other.width && self.height > other.height
+    }
+}
+
+fn main() {
+    let rect1 = Rectangle {
+        width: 30,
+        height: 50,
+    };
+    let rect2 = Rectangle {
+        width: 10,
+        height: 40,
+    };
+    let rect3 = Rectangle {
+        width: 60,
+        height: 45,
+    };
+
+    println!("Can rect1 hold rect2? {}", rect1.can_hold(&rect2));
+    println!("Can rect1 hold rect3? {}", rect1.can_hold(&rect3));
+}
+```
 
 #### 5.3.4 关联函数
 
@@ -1894,3 +1894,731 @@ $ cargo run
 
 ## 6、枚举与模式匹配
 
+**枚举**（*enumerations*），也被称作 *enums*。枚举允许你通过列举可能的 **成员**（*variants*） 来定义一个类型。
+
+### 6.1 枚举的定义
+
++ IP地址：IPv4、IPv6
+
+  ```rust
+  enum IpAddrKind {
+      V4,
+      V6,
+  }
+  ```
+
+  `V4` 和 `V6`，被称为枚举的 **成员**（*variants*）
+
+#### 6.1.1 枚举值
+
+可以像这样创建 `IpAddrKind` 两个不同成员的实例：
+
+```rust
+let four = IpAddrKind::V4
+let six = IpAddrKind::V6
+```
+
+==注意枚举的成员位于其标识符的命名空间中，并使用两个冒号分开==。这么设计的益处是现在 `IpAddrKind::V4` 和 `IpAddrKind::V6` 都是 `IpAddrKind` 类型的。例如，接着可以定义一个函数来获取任何 `IpAddrKind`：
+
+```rust
+fn route(ip_kind: IpAddrKind) {}
+```
+
+现在可以使用任一成员来调用这个函数：
+
+```rust
+route(IpAddrKind::V4);
+route(IpAddrKind::V6);
+```
+
+#### 6.1.2 将数据附加到枚举的变体中
+
+使用枚举甚至还有更多优势。进一步考虑一下我们的 IP 地址类型，目前没有一个存储实际 IP 地址 **数据** 的方法；只知道它是什么 **类型** 的。考虑到已经在第五章学习过结构体了，你可能会像这样处理问题：
+
+```rust
+fn main() {
+    enum IpAddrKind {
+        V4,
+        V6,
+    }
+
+    struct IpAddr {
+        kind: IpAddrKind,
+        address: String,
+    }
+
+    let home = IpAddr {
+        kind: IpAddrKind::V4,
+        address: String::from("127.0.0.1"),
+    };
+
+    let loopback = IpAddr {
+        kind: IpAddrKind::V6,
+        address: String::from("::1"),
+    };
+}
+```
+
+我们可以使用一种更简洁的方式来表达相同的概念，仅仅使用枚举并将数据直接放进每一个枚举成员而不是将枚举作为结构体的一部分。`IpAddr` 枚举的新定义表明了 `V4` 和 `V6` 成员都关联了 `String` 值：
+
+```rust
+fn main() {
+    enum IpAddr {
+        V4(String),
+        V6(String),
+    }
+
+    let home = IpAddr::V4(String::from("127.0.0.1"));
+
+    let loopback = IpAddr::V6(String::from("::1"));
+}
+```
+
+优点：
+
++ 不需要额外使用`struct`
++ 每个变体可以拥有不同的类型以及关联的数据量
+
+用枚举替代结构体还有另一个优势：每个成员可以处理不同类型和数量的数据。IPv4 版本的 IP 地址总是含有四个值在 0 和 255 之间的数字部分。如果我们想要将 `V4` 地址存储为四个 `u8` 值而 `V6` 地址仍然表现为一个 `String`，这就不能使用结构体了。枚举则可以轻易的处理这个情况：
+
+```rust
+fn main() {
+    enum IpAddr {
+        V4(u8, u8, u8, u8),
+        V6(String),
+    }
+
+    let home = IpAddr::V4(127, 0, 0, 1);
+
+    let loopback = IpAddr::V6(String::from("::1"));
+}
+```
+
+#### 6.1.3 标准库中的IpAddr
+
+事实证明存储和编码 IP 地址实在是太常见了以至于标准库提供了一个开箱即用的定义！让我们看看标准库是如何定义 `IpAddr` 的：它正有着跟我们定义和使用的一样的枚举和成员，不过它将成员中的地址数据嵌入到了两个不同形式的结构体中，它们对不同的成员的定义是不同的：
+
+```rust
+struct Ipv4Addr {
+    // --snip--
+}
+
+struct Ipv6Addr {
+    // --snip--
+}
+
+enum IpAddr {
+    V4(Ipv4Addr),
+    V6(Ipv6Addr),
+}
+```
+
+可以将任意类型的数据放入枚举成员中：例如字符串、数字类型或者结构体。甚至可以包含另一个枚举！另外，标准库中的类型通常并不比你设想出来的要复杂多少。
+
+```rust
+enum Message {
+    Quit,
+    Move { x: i32, y: i32 },
+    Write(String),
+    ChangeColor(i32, i32, i32),
+}
+```
+
+#### 6.1.4 为枚举定义方法
+
+结构体和枚举还有另一个相似点：就像可以使用 `impl` 来为结构体定义方法那样，也可以在枚举上定义方法。这是一个定义于我们 `Message` 枚举上的叫做 `call` 的方法：
+
+```rust
+fn main() {
+    enum Message {
+        Quit,
+        Move { x: i32, y: i32 },
+        Write(String),
+        ChangeColor(i32, i32, i32),
+    }
+
+    impl Message {
+        fn call(&self) {
+            // 在这里定义方法体
+        }
+    }
+
+    let m = Message::Write(String::from("hello"));
+    m.call();
+}
+```
+
+#### 6.1.5 Option枚举
+
++ 定义于标准库中
++ 在`Prelude`（预导入模块）中
++ 描述了：某个值可能存在（某种类型）或不存在的情况
+
+Rust 并没有很多其他语言中有的空值功能。**空值**（*Null* ）是一个值，它代表没有值。在有空值的语言中，变量总是这两种状态之一：空值和非空值。
+
+Null引用：The Billion Dollar Mistake
+
+空值的问题在于当你尝试像一个非空值那样使用一个空值，会出现某种形式的错误。因为空和非空的属性无处不在，非常容易出现这类错误。
+
+空值尝试表达的概念仍然是有意义的：空值是一个因为某种原因目前无效或缺失的值。
+
+问题不在于概念而在于具体的实现。为此，Rust 并没有空值，不过它确实拥有一个可以编码存在或不存在概念的枚举。这个枚举是 `Option<T>`，它在标准库中定义。
+
+```rust
+enum Option<T> {
+    Some(T),
+    None,
+}
+```
+
+Option枚举包含在`Prelude`（预导入模块）中，可以直接使用：
+
++ `Option<T>`
++ `Some(T)`
++ `None`
+
+`Option<T>` 比 `Null` 好在哪？
+
++ `Option<T>` 和 `T` 是不同的类型，不可以把 `Option<T>`直接当成`T`
+
+  ```rust
+  let x: i8 = 5;
+  let y: Option<i8> = Some(5);
+  
+  let sum = x + y;
+  ```
+
+  ```rust
+  $ cargo run
+     Compiling enums v0.1.0 (file:///projects/enums)
+  error[E0277]: cannot add `Option<i8>` to `i8`
+   --> src/main.rs:5:17
+    |
+  5 |     let sum = x + y;
+    |                 ^ no implementation for `i8 + Option<i8>`
+    |
+    = help: the trait `Add<Option<i8>>` is not implemented for `i8`
+  
+  For more information about this error, try `rustc --explain E0277`.
+  error: could not compile `enums` due to previous error
+  ```
+
+错误信息意味着 Rust 不知道该如何将 `Option<i8>` 与 `i8` 相加，因为它们的类型不同。当在 Rust 中拥有一个像 `i8` 这样类型的值时，编译器确保它总是有一个有效的值。我们可以自信使用而无需做空值检查。只有当使用 `Option<i8>`（或者任何用到的类型）的时候需要担心可能没有值，而编译器会确保我们在使用值之前处理了为空的情况。
+
+换句话说，在对 `Option<T>` 进行 `T` 的运算之前必须将其转换为 `T`
+
+
+
+### 6.2 match控制流结构
+
+Rust 有一个叫做 `match` 的极为强大的控制流运算符，它允许我们将一个值与一系列的模式相比较，并根据相匹配的模式执行相应代码。模式可由字面值、变量、通配符和许多其他内容构成。
+
+```rust
+enum Coin {
+    Penny,
+    Nickel,
+    Dime,
+    Quarter,
+}
+
+fn value_in_cents(coin: Coin) -> u8 {
+    match coin {
+        Coin::Penny => 1,
+        Coin::Nickel => 5,
+        Coin::Dime => 10,
+        Coin::Quarter => 25,
+    }
+}
+
+fn main() {}
+```
+
+#### 6.2.1 绑定值的模式
+
+匹配分支的另一个有用的功能是可以绑定匹配的模式的部分值。这也就是如何从枚举成员中提取值的
+
+```rust
+#[derive(Debug)] // 这样可以立刻看到州的名称
+enum UsState {
+    Alabama,
+    Alaska,
+    // --snip--
+}
+
+enum Coin {
+    Penny,
+    Nickel,
+    Dime,
+    Quarter(UsState),
+}
+
+fn value_in_cents(coin: Coin) -> u8 {
+    match coin {
+        Coin::Penny => 1,
+        Coin::Nickel => 5,
+        Coin::Dime => 10,
+        Coin::Quarter(state) => {
+            println!("State quarter from {:?}!", state);
+            25
+        }
+    }
+}
+
+fn main() {
+    let state = value_in_cents(Coin::Quarter(UsState::Alaska));
+    println!("{}", state)
+}
+
+```
+
+#### 6.2.2 匹配 Option\<T>
+
+我们在之前的部分中使用 `Option<T>` 时，是为了从 `Some` 中取出其内部的 `T` 值；我们还可以像处理 `Coin` 枚举那样使用 `match` 处理 `Option<T>`！只不过这回比较的不再是硬币，而是 `Option<T>` 的成员，但 `match` 表达式的工作方式保持不变。
+
+比如我们想要编写一个函数，它获取一个 `Option<i32>` ，如果其中含有一个值，将其加一。如果其中没有值，函数应该返回 `None` 值，而不尝试执行任何操作。
+
+```rust
+fn main() {
+    fn plus_one(x: Option<i32>) -> Option<i32> {
+        match x {
+            None => None,
+            Some(i) => Some(i + 1),
+        }
+    }
+
+    let five = Some(5);
+    let six = plus_one(five);
+    let none = plus_one(None);
+}
+```
+
+#### 6.2.3 match匹配必须穷举所有的可能
+
+`match` 还有另一方面需要讨论：这些分支必须覆盖了所有的可能性。考虑一下 `plus_one` 函数的这个版本，它有一个 bug 并不能编译：
+
+```rust
+fn main() {
+    fn plus_one(x: Option<i32>) -> Option<i32> {
+        match x {
+            Some(i) => Some(i + 1),
+        }
+    }
+
+    let five = Some(5);
+    let six = plus_one(five);
+    let none = plus_one(None);
+}
+```
+
+```rust
+$ cargo run
+   Compiling enums v0.1.0 (file:///projects/enums)
+error[E0004]: non-exhaustive patterns: `None` not covered
+   --> src/main.rs:3:15
+    |
+3   |         match x {
+    |               ^ pattern `None` not covered
+    |
+    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+    = note: the matched value is of type `Option<i32>`
+
+For more information about this error, try `rustc --explain E0004`.
+error: could not compile `enums` due to previous error
+```
+
+Rust 知道我们没有覆盖所有可能的情况甚至知道哪些模式被忘记了！Rust 中的匹配是 **穷尽的**（*exhaustive*）：必须穷举到最后的可能性来使代码有效。特别的在这个 `Option<T>` 的例子中，Rust 防止我们忘记明确的处理 `None` 的情况，这让我们免于假设拥有一个实际上为空的值，从而使之前提到的价值亿万的错误不可能发生。
+
+#### 6.2.4 通配模式和 _ 占位符
+
+我们希望对一些特定的值采取特殊操作，而对其他的值采取默认操作。这时，可以使用通配模式other或 _ 占位符来替代其余没列出的值。
+
+```rust
+fn main() {
+    let v = 1u8;
+
+    match v {
+        1 => println!("one"),
+        3 => println!("three"),
+        5 => println!("five"),
+        7 => println!("seven"),
+        _other => println!("{}", _other),
+    }
+
+    match v {
+        1 => println!("one"),
+        3 => println!("three"),
+        5 => println!("five"),
+        7 => println!("seven"),
+        _ => (),
+    }
+}
+```
+
+`other`和`_`的作用是类似的，只不过使用`other`可以获取到值。
+
+
+
+### 6.3 if let 简洁控制流
+
+`if let`处理只关心一种匹配而忽略其它匹配的情况
+
+```rust
+fn main() {
+    let v = Some(0u8);
+    match v {
+        Some(3) => println!("three"),
+        _ => (),
+    }
+
+    if let Some(3) = v {
+        println!("three");
+    }
+}
+```
+
+`if let` 语法获取通过等号分隔的一个模式和一个表达式。它的工作方式与 `match` 相同，这里的表达式对应 `match` 而模式则对应第一个分支。
+
+使用 `if let` 意味着编写更少代码，更少的缩进和更少的样板代码。然而，这样会失去 `match` 强制要求的穷尽性检查。`match` 和 `if let` 之间的选择依赖特定的环境以及增加简洁度和失去穷尽性检查的权衡取舍。
+
+可以认为 `if let` 是 `match` 的一个语法糖，它当值匹配某一模式时执行代码而忽略所有其他值。
+
+可以在 `if let` 中包含一个 `else`。`else` 块中的代码与 `match` 表达式中的 `_` 分支块中的代码相同，这样的 `match` 表达式就等同于 `if let` 和 `else`。 
+
+```rust
+fn main() {
+    let v = Some(0u8);
+    match v {
+        Some(3) => println!("three"),
+        _ => (),
+    }
+
+    if let Some(3) = v {
+        println!("three");
+    } else {
+        println!("others");
+    }
+}
+```
+
+
+
+## 7、Package、Crate、Module
+
+Rust的代码组织
+
++ 代码组织主要包括：
+
+  + 哪些细节可以暴露，哪些细节是私有的
+
+  + 作用域内哪些名称是有效的
+
++ 模块系统：
+
+  + Package（包）：Cargo的特性，让你构建、测试、共享crate
+  + Crate（单元包）：一个模块树，它可以产生一个library或可执行文件
+  + Module（模块）、use：让你控制代码的组织、作用域、私有路径
+  + Path（路径）：为`struct`、`function`或`module`等项命名的方式
+
+
+
+### 7.1 Package和Crate
+
+crate 是 Rust 在编译时最小的代码单位。如果你用 `rustc` 而不是 `cargo` 来编译一个文件（第一章我们这么做过），编译器还是会将那个文件认作一个 crate。 crate 可以包含模块，模块可以定义在其他文件，然后和 crate 一起编译。
+
+#### 7.1.1 Crate
+
++ Crate的类型
+
+  + binary
+
+  + library
+
++ Crate Root
+
+  + 是源代码文件
+
+  + Rust编译器从这里开始，组成你的Crate的根Module
+
+#### 7.1.2 Package
+
++ 包含1个`Cargo.toml`，它描述了如何构建这些Crates
++ 只能包含 0 - 1个 library crate
++ 可以包含任意数量的 binary crate
++ 但必须至少包含一个 crate （library 或 binary）
+
+#### 7.1.3 Cargo的惯例
+
++ src / main.rs
+  + binary crate 的 crate root
+  + crate 名与 package 名相同
++ src / lib.rs
+  + package 包含一个 library crate
+  + library crate 的 crate root
+  + crate 名与 package 名相同
++ Cargo 把 crate root 文件交给 rustc 来构建 library 或 binary
++ 一个 Package 可以同时包含 src / main.rs 和 src / lib.rs
+  + 一个 binary crate，一个 library crate
+  + 名称与 package 名相同
++ 一个 Package 可以有多个 binary crate
+  + 文件放在 src / bin下
+  + 每个文件是单独的 binary crate
+
+#### 7.1.4 Crate的作用
+
++ 将相关功能组合到一个作用域内，便于在项目间进行共享
+  + 防止命名冲突
++ 例如 `rand crate`，访问它的功能需要通过它的名字：`rand`
+
+### 7.2 定义module来控制作用域和私有性
+
+#### 7.2.1 Module
+
++ 在一个 crate 内，将代码进行分组
++ 增加可读性，易于复用
++ 控制条目（item）私有性。`public`、`private`
+
+#### 7.2.2 建立Module
+
++ 使用 `mod`关键字
++ module可以嵌套
++ 可包含其它项（struct、enum、常量、trait、函数等）的定义
+
+```rust
+mod front_of_house {
+    mod hosting {
+        fn add_to_waitlist() {}
+        fn seat_at_table() {}
+    }
+
+    mod serving {
+        fn take_order() {}
+        fn serve_order() {}
+        fn take_payment() {}
+    }
+}
+```
+
+```rust
+crate
+ └── front_of_house
+     ├── hosting
+     │   ├── add_to_waitlist
+     │   └── seat_at_table
+     └── serving
+         ├── take_order
+         ├── serve_order
+         └── take_payment
+```
+
+`src/main.rs` 和 `src/lib.rs` 叫做 crate root。之所以这样叫它们是因为这两个文件的内容都分别在 crate 模块结构的根组成了一个名为 `crate` 的模块，该结构被称为 *模块树*（*module tree*）
+
+### 7.3 路径（Path）
+
+为了在Rust的模块中找到某个条目，需要使用路径。路径有两种形式：
+
+- **绝对路径**（*absolute path*）从 crate root 开始，以 crate 名或者字面值 `crate` 开头。
+- **相对路径**（*relative path*）从当前模块开始，以 `self`、`super` 或当前模块的标识符开头。
+
+绝对路径和相对路径都后跟一个或多个由双冒号（`::`）分割的标识符。
+
+```rust
+mod front_of_house {
+    mod hosting {
+        fn add_to_waitlist() {}
+    }
+}
+
+pub fn eat_at_restaurant() {
+    
+    crate::front_of_house::hosting::add_to_waitlist();
+
+    front_of_house::hosting::add_to_waitlist();
+    
+}
+```
+
+```rust
+cr   
+   Compiling path_demo v0.1.0 (E:\Files\Learning\BackEnd\Rust\Code\path_demo)
+error[E0603]: module `hosting` is private
+ --> src\lib.rs:9:28
+  |
+9 |     crate::front_of_house::hosting::add_to_waitlist();
+  |                            ^^^^^^^ private module
+  |
+note: the module `hosting` is defined here
+ --> src\lib.rs:2:5
+  |
+2 |     mod hosting {
+  |     ^^^^^^^^^^^
+
+error[E0603]: module `hosting` is private
+  --> src\lib.rs:11:21
+   |
+11 |     front_of_house::hosting::add_to_waitlist();
+   |                     ^^^^^^^ private module
+   |
+note: the module `hosting` is defined here
+  --> src\lib.rs:2:5
+   |
+2  |     mod hosting {
+   |     ^^^^^^^^^^^
+
+For more information about this error, try `rustc --explain E0603`.
+error: could not compile `path_demo` due to 2 previous errors
+```
+
+错误信息说 `hosting` 模块是私有的。换句话说，我们拥有 `hosting` 模块和 `add_to_waitlist` 函数的的正确路径，但是 Rust 不让我们使用，因为它不能访问私有片段。
+
+#### 7.3.1 私有边界（privacy boundary）
+
++ 模块不仅可以用组织代码，还可以定义私有边界
++ 如果想把函数或`struct`等设为私有，可以将它放到某个模块中
++ Rust中所有的条目（函数、方法、struct、enum、模块、常量）默认是私有的
++ 父级模块无法访问子模块中的私有条目
++ 子模块里可以使用所有祖先模块中的条目
++ 可以调用同级模块中的私有条目
+
+#### 7.3.2 pub关键字
+
++ 使用 `pub`关键字来将某些条目标记为公共的
+
+  ```rust
+  mod front_of_house {
+      pub mod hosting {
+          pub fn add_to_waitlist() {}
+      }
+  }
+  
+  pub fn eat_at_restaurant() {
+  
+      crate::front_of_house::hosting::add_to_waitlist();
+  
+      front_of_house::hosting::add_to_waitlist();
+      
+  }
+  ```
+
+#### 7.3.3 super关键字
+
++ super关键字用来访问父级模块路径中的内容，类似文件系统中的 `..`
+
+  ```rust
+  fn serve_order() {}
+  
+  mod back_of_house {
+  
+      fn fix_incorrect_order() {
+          cook_order();
+          super::serve_order();
+          crate::serve_order();
+      }
+  
+      fn cook_order() {}
+  }
+  ```
+
+#### 7.3.4 pub struct
+
++ 将`pub`关键字放在`struct`前
+
+  + `struct`为公共的
+  + `struct`的字段默认是私有的
+
++ `struct`的字段需要单独设置`pub`来变成共有的
+
+  ```rust
+  mod back_of_house {
+      pub struct Breakfast {
+          pub toast: String,
+          seasonal_fruit: String,
+      }
+  
+      impl Breakfast {
+          pub fn summer(toast: &str) -> Breakfast {
+              Breakfast {
+                  toast: String::from(toast),
+                  seasonal_fruit: String::from("peaches"),
+              }
+          }
+      }
+  }
+  
+  pub fn eat_at_restaurant() {
+      let mut meal = back_of_house::Breakfast::summer("Rye");
+      meal.toast = String::from("Wheat");
+      println!("I' d like {} toast please", meal.toast);
+      meal.seasonal_fruit = String::from("blueberries"); // 无法访问私有字段
+  }
+  ```
+
+#### 7.3.5 pub enum
+
++ 将`pub`关键字放在`enum`前
+
+  + `enum`是公共的
+  + `enum`的变体也都是公共的
+
+  ```rust
+  mod back_of_house {
+      pub enum Appetizer {
+          Soup,
+          Salad,
+      }
+  }
+  ```
+
+  
+
+### 7.4 use关键字
+
++ `use`关键字可以将路径导入到作用域内
+
+  + 任遵守私有性规则
+
+  ```rust
+  mod front_of_house {
+      pub mod hosting {
+          pub fn add_to_waitlist() {}
+          fn some_function() {}
+      }
+  }
+  use crate::front_of_house::hosting;
+  
+  pub fn eat_at_restaurant() {
+      hosting::add_to_waitlist();
+      hosting::add_to_waitlist();
+      hosting::add_to_waitlist();
+      // hosting::some_function();
+  }
+  ```
+
++ 使用`use`来指定相对路径
+
+#### 7.4.1 use的习惯用法
+
++ 函数：将函数的父级模块引入作用域（指定到父级）
+
++ `struct`、`enum`、其它：指定完整路径（指定到本身）
+
++ 同名条目：指定到父级
+
+  ```rust
+  use std::fmt;
+  use std::io;
+  
+  fn f1() -> fmt::Result {}
+  
+  fn f2() -> io::Result {}
+  
+  
+  
+  use std::fmt::Result as fmtResult;
+  use std::io::Result as ioResult;
+  
+  fn f1() -> fmtResult {}
+  
+  fn f2() -> ioResult {}
+  ```
+
+  
