@@ -2603,6 +2603,8 @@ error: could not compile `path_demo` due to 2 previous errors
 
 + 同名条目：指定到父级
 
++ 可以使用 `as`关键字提供新的名称
+
   ```rust
   use std::fmt;
   use std::io;
@@ -2621,4 +2623,83 @@ error: could not compile `path_demo` due to 2 previous errors
   fn f2() -> ioResult {}
   ```
 
+#### 7.4.2 使用 pub use 重新导出名称
+
++ 使用`use`将路径（名称）导入到作用域内后，该名称在此作用域内是私有的
+
++ `pub use`：重导出
+
+  + 将该条目引入作用域
+  + 该条目可以被外部代码引入到它们的作用域
+
+  ```rust
+  pub use crate::front_of_house::hosting;
+  ```
+
+#### 7.4.3 使用外部包（package）
+
++ 导入过程
+
+  1. `Cargo.toml`添加依赖的包（package）
+     + <a href = "https://crates.io/">https://crates.io/</a> 
+
+  1. 使用`use`将特定条目引入作用域
+
+     ```rust
+     Cargo.toml :
+     [dependencies]
+     rand = "0.8.5"
+     
+     main.rs : 
+     use rand::Rng;
+     ```
+
++ 标准库（std）也被当做外部包
+
+  + 不需要修改`Cargo.toml`来包含`std`
+
+  + 需要使用`use`将`std`中的特定条目引入当前作用域
+
+    ```rust
+    use std::collections::HashMap;
+    ```
+
+#### 7.4.4 使用嵌套路径清理大量的use语句
+
++ 如果使用同一个包或模块下的多个条目
+
+  ```rust
+  use std::cmp::Ordering;
+  use std::io;
+  ```
+
++ 可使用嵌套路径在同一行内将上述条目进行引入
+
+  + `路径相同的部分::{路径差异的部分}`
+
+  ```rust
+  use std::cmp::Ordering;
+  use std::io;
+  use std::{cmp::Ordering, io};
+  ```
+
++ 如果两个`use`路径之一是另一个的子路径
+
+  + 使用`self`
+
+  ```rust
+  use std::io;
+  use std::io::Write;
+  use std::io::{self, Write};
+  ```
+
+#### 7.4.5 通配符 *
+
++ 使用`*`可以把路径中所有的公共条目都引入到作用域
+
+  ```rust
+  use std::collections::*;
+  ```
+
   
+
