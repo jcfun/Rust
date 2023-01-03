@@ -2703,3 +2703,135 @@ error: could not compile `path_demo` due to 2 previous errors
 
   
 
+### 7.5 将模块拆分为不同文件
+
+#### 7.5.1 将模块内容移动到其它文件
+
++ 模块定义时，如果模块名后边是`;`，而不是代码块
+  + Rust会从与模块同名的文件中加载内容
+  + 模块树的结构不会发生变化
++ 随着模块逐渐变大，该技术让你可以把模块的内容移动到其它文件中
+
+
+
+## 8、常用的集合
+
+Rust 标准库中包含一系列被称为 **集合**（*collections*）的非常有用的数据结构。大部分其他数据类型都代表一个特定的值，不过集合可以包含多个值。不同于内建的数组和元组类型，这些集合指向的数据是储存在堆上的，这意味着数据的数量不必在编译时就已知，并且还可以随着程序的运行增长或缩小。
+
+- *vector* 允许我们一个挨着一个地储存一系列数量可变的值
+- **字符串**（*string*）是字符的集合。我们之前见过 `String` 类型，不过在本章我们将深入了解。
+- **哈希 map**（*hash map*）允许我们将值与一个特定的键（key）相关联。这是一个叫做 *map* 的更通用的数据结构的特定实现。
+
+### 8.1 使用Vector存储多个值
+
++ `Vec<T>`，叫做`Vector`
+  + 由标准库提供
+  + 可存储多个值
+  + 只能存储相同类型的数据
+  + 值在内存中连续存放
+
+#### 8.1.1 创建Vector
+
++ `Vec::new`函数
+
+  ```rust
+  let v: Vec<i32> = Vec::new();
+  ```
+
++ 使用初始值创建`Vec<T>`，使用`vec!`宏
+
+  ```rust
+  let v = vec![1, 2, 3];
+  ```
+
+#### 8.1.2 更新Vector
+
++ 向`Vector`添加元素，使用`push`方法
+
+  ```rust
+  let mut v = Vec::new();
+  v.push(1);
+  v.push(2);
+  v.push(3);
+  v.push(4);
+  ```
+
+#### 8.1.3 删除Vector
+
++ 与任何其它`struct`一样，当`Vector`离开作用域后
+
+  + 它就被清理掉了
+  + 它所有的元素也被清理掉了
+
+  ```rust
+  {
+      let v = vec![1, 2, 3, 4];
+  
+      // 处理变量 v
+  } // <- 这里 v 离开作用域并被丢弃
+  ```
+
+#### 8.1.4 读取Vector的元素
+
++ 两种方式可以引用`Vector`里的值
+
+  + 索引
+  + `get`方法
+
++ 索引 vs `get`处理访问越界
+
+  + 索引：panic
+  + `get`：返回None
+
+  ```rust
+  
+  let v = vec![1, 2, 3, 4];
+  let third: &i32 = &v[2];
+  println!("The third element is: {}", third);
+  
+  match v.get(2) {
+      Some(third) => println!("The third element is: {}", third),
+      None => println!("There is no third element"),
+  }
+  ```
+
+#### 8.1.5 所有权和借用规则
+
++ 不能在同一个作用域内同时拥有可变和不可变引用
+
+  ```rust
+  let mut v = vec![1, 2, 3, 4, 5];
+  let first = &v[0];
+  v.push(6);
+  println!("The first element is: {}", first);
+  ```
+
+  ```rust
+  error[E0502]: cannot borrow `v` as mutable because it is also borrowed as immutable
+  ```
+
+  为什么第一个元素的引用会关心 vector 结尾的变化？不能这么做的原因是由于 vector 的工作方式：在 vector 的结尾增加新元素时，在没有足够空间将所有元素依次相邻存放的情况下，可能会要求分配新内存并将老的元素拷贝到新的空间中。这时，第一个元素的引用就指向了被释放的内存。借用规则阻止程序陷入这种状况。
+
+#### 8.1.6 遍历Vector中的值
+
++ for循环
+
+  ```rust
+  let v = vec![1, 2, 3, 4, 5];
+  for i in &v {
+      println!("{}", i);
+  }
+  
+  let mut v = vec![1, 2, 3, 4, 5];
+  for i in &mut v {
+      *i += 50;
+  }
+  for i in &v {
+      println!("{}", i);
+  }
+  ```
+
+  
+
+
+
