@@ -2319,8 +2319,6 @@ Rust的代码组织
   + Module（模块）、use：让你控制代码的组织、作用域、私有路径
   + Path（路径）：为`struct`、`function`或`module`等项命名的方式
 
-
-
 ### 7.1 Package和Crate
 
 crate 是 Rust 在编译时最小的代码单位。如果你用 `rustc` 而不是 `cargo` 来编译一个文件（第一章我们这么做过），编译器还是会将那个文件认作一个 crate。 crate 可以包含模块，模块可以定义在其他文件，然后和 crate 一起编译。
@@ -2369,6 +2367,8 @@ crate 是 Rust 在编译时最小的代码单位。如果你用 `rustc` 而不�
   + 防止命名冲突
 + 例如 `rand crate`，访问它的功能需要通过它的名字：`rand`
 
+
+
 ### 7.2 定义module来控制作用域和私有性
 
 #### 7.2.1 Module
@@ -2411,6 +2411,8 @@ crate
 ```
 
 `src/main.rs` 和 `src/lib.rs` 叫做 crate root。之所以这样叫它们是因为这两个文件的内容都分别在 crate 模块结构的根组成了一个名为 `crate` 的模块，该结构被称为 *模块树*（*module tree*）
+
+
 
 ### 7.3 路径（Path）
 
@@ -2831,7 +2833,168 @@ Rust 标准库中包含一系列被称为 **集合**（*collections*）的非常
   }
   ```
 
+#### 8.1.7 使用枚举来存储多种数据类型
+
++ `Enum`的变体可以附加不同类型的数据
+
++ `Enum`的变体定义在同一个`enum`类型下
+
+  ```rust
+  enum SpreadsheetCell {
+      Int(i32),
+      Float(f64),
+      Text(String),
+  }
   
+  let row = vec![
+      SpreadsheetCell::Int(3),
+      SpreadsheetCell::Float(11.22),
+      SpreadsheetCell::Text(String::from("bule")),
+  ];
+  ```
+  
+  Rust 在编译时就必须准确的知道 vector 中类型的原因在于它需要知道储存每个元素到底需要多少内存。第二个好处是可以准确的知道这个 vector 中允许什么类型。如果 Rust 允许 vector 存放任意类型，那么当对 vector 元素执行操作时一个或多个类型的值就有可能会造成错误。使用枚举外加 match 意味着 Rust 能在编译时就保证总是会处理所有可能的情况
+  
+  
+
+### 8.2 字符串
+
+字符串是新晋 Rustacean 们通常会被困住的领域，这是由于三方面理由的结合：Rust 倾向于确保暴露出可能的错误，字符串是比很多程序员所想象的要更为复杂的数据结构，以及 UTF-8。所有这些要素结合起来对于来自其他语言背景的程序员就可能显得很困难了。
+
+#### 8.2.1 什么是字符串
+
++ 特点
+
+  + `Byte`的集合
+
+  + 提供了一些方法
+    + 可以将`byte`解析为文本
+
++ Rust的**核心语言层面**，只有一个字符串类型：字符串切片`str`（或`&str`）
+
++ 字符串切片：对存储在其它地方，UTF-8编码的字符串的引用
+
+  + 字符串字面值：存储在二进制文件中，也是字符串切片
+
++ `String`类型
+
+  + 来自**标准库**而不是核心语言
+  + 可增长、可修改、可拥有
+  + UTF-8编码
+
++ 通常说的字符串是指`String`和`&str`两种类型
+
+  + 标准库里用的多
+  + UTF-8编码
+
++ 其它类型的字符串：OsString、OsStr、CString、CStr
+
+  + `String` vs `Str`后缀：拥有或借用的变体
+  + 可存储不同编码的文本或在内存中以不同的形式展现
+
++ Library crate针对存储字符串可提供更多的选项
+
+#### 8.2.2 创建一个新的字符串（String）
+
++ 很多`Vec<T>`的操作都可以用于`String`
+
++ `String::new()`函数
+
+  ```rust
+  let mut s = String::new();
+  ```
+
++ 使用初始值来创建`String`
+
+  + `to_string()`方法，可用于实现了`Display trait`的类型，包括字符串字面值
+
+    ```rust
+    let data = "initial contents";
+    let s = data.to_string();
+    
+    let s1 = "initial contents".to_string();
+    ```
+
+  + `String::from()`函数，从字面值创建`String`
+
+    ```rust
+    let s2 = String::from("initial contents");
+    ```
+
+  + UTF-8
+
+    ```rust
+    let hello = String::from("السلام عليكم");
+    let hello = String::from("Dobrý den");
+    let hello = String::from("Hello");
+    let hello = String::from("שָׁלוֹם");
+    let hello = String::from("नमस्ते");
+    let hello = String::from("こんにちは");
+    let hello = String::from("안녕하세요");
+    let hello = String::from("你好");
+    let hello = String::from("Olá");
+    let hello = String::from("Здравствуйте");
+    let hello = String::from("Hola");
+    ```
+
+#### 8.2.3 更新String
+
++ `push_str()`方法：可以将一个字符串切片附加到`String`
+
+  ```rust
+  let mut s = String::from("foo");
+  s.push_str("bar");
+  println!("{}", s);
+  
+  let mut s1 = String::from("foo");
+  let s2 = "bar";
+  s1.push_str(s2);
+  println!("s2 is {}", s2);
+  ```
+
++ `push()`方法：把单个字符附加到`String`
+
+  ```rust
+  let mut s = String::from("foo");
+  s.push_str("bar");
+  s.push('!');
+  println!("{}", s);
+  ```
+
++ `+`：连接字符串
+
+  + 使用了类似这个签名的方法`fn add(self, s: &str) -> String {...}`
+    + 标准库中的`add`方法使用了泛型
+    + 只能把`&str`添加到`String`
+    + 解引用强制转换（deref coercion）
+
+  ```rust
+  let s1 = String::from("Hello, ");
+  let s2 = String::from("world");
+  let s3 = s1 + &s2;
+  println!("{}", s3);
+  println!("{}", s1); // 注意 s1 被移动了，不能继续使用
+  println!("{}", s2);
+  ```
+
++ `format!`：连接多个字符串
+
+  + 和`println!()`类似，但返回字符串
+  + 不会获得参数的所有权
+
+  ```rust
+  let s1 = String::from("tic");
+  let s2 = String::from("tac");
+  let s3 = String::from("toe");
+  
+  // let s3 = s1 + "-" + &s2 + "-" + &s3;
+  // println!("{}", s3);
+  
+  let s = format!("{}-{}-{}", s1, s2, s3);
+  println!("{}", s);
+  ```
+
+#### 8.2.4 对String按索引的形式进行访问
 
 
 
