@@ -45,16 +45,43 @@ fn main() {
 
 
 
-    let s1 = String::from("tic");
-    let s2 = String::from("tac");
-    let s3 = String::from("toe");
+    // let s1 = String::from("tic");
+    // let s2 = String::from("tac");
+    // let s3 = String::from("toe");
 
-    // let s3 = s1 + "-" + &s2 + "-" + &s3;
-    // println!("{}", s3);
+    // // let s3 = s1 + "-" + &s2 + "-" + &s3;
+    // // println!("{}", s3);
 
-    let s = format!("{}-{}-{}", s1, s2, s3);
-    println!("{}", s);
+    // let s = format!("{}-{}-{}", s1, s2, s3);
+    // println!("{}", s);
 
+
+    // let s1 = String::from("hello");
+    // let h = s1[0];
+
+
+    // let len = String::from("Hola").len();
+    // println!("{}", len);
+
+    // let len = String::from("Здравствуйте").len();
+    // println!("{}", len);
+
+    // let hello = "Здравствуйте";
+    // let answer = &hello[0];
+    // // З: 208 151
+
+    
+
+    let w = "नमस्ते"; // 梵文书写的印度语单词
+    for b in w.bytes() { // 字节
+        println!("{}", b);
+    }
+
+    for b in w.chars() { // 标量值
+        println!("{}", b);
+    }
+
+    
 
 
 }
