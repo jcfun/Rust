@@ -72,16 +72,28 @@ fn main() {
 
     
 
-    let w = "नमस्ते"; // 梵文书写的印度语单词
-    for b in w.bytes() { // 字节
-        println!("{}", b);
-    }
+    // let w = "नमस्ते"; // 梵文书写的印度语单词
+    // for b in w.bytes() { // 字节
+    //     println!("{}", b);
+    // }
 
-    for b in w.chars() { // 标量值
-        println!("{}", b);
-    }
+    // for b in w.chars() { // 标量值
+    //     println!("{}", b);
+    // }
 
-    
+    // use unicode_segmentation::UnicodeSegmentation;
+    // for g in "नमस्ते".graphemes(true) { // 字形簇
+    //     println!("{}", g);
+    // }
+
+
+
+    let hello = "Здравствуйте";
+    let s = &hello[0..4];
+    println!("{}", s);
+
+    let s1 = &hello[0..3];
+    println!("{}", s1);
 
 
 }

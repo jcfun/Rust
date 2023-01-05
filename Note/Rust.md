@@ -3031,12 +3031,253 @@ Rust 标准库中包含一系列被称为 **集合**（*collections*）的非常
 
     为了避免返回意外的值并造成不能立刻发现的 bug，Rust 根本不会编译这些代码，并在开发过程中及早杜绝了误会的发生。
 
-  + 字节、标量值和字形簇（Bytes、Scalar Values、Grapheme Clusters）
++ 字节、标量值和字形簇（Bytes、Scalar Values、Grapheme Clusters）
 
-    + Rust有三种看待字符串的方式
-      + 字节
-      + 表量值
-      + 字形簇（最接近“字母”的概念）
+  + Rust有三种看待字符串的方式
+    + 字节
+    + 表量值
+    + 字形簇（最接近“字母”的概念）
 
+  ```rust
+  let w = "नमस्ते"; // 梵文书写的印度语单词
+  for b in w.bytes() { // 字节
+      println!("{}", b);
+  }
+  
+  for b in w.chars() { // 标量值
+      println!("{}", b);
+  }
+  
+  use unicode_segmentation::UnicodeSegmentation;
+  for g in "नमस्ते".graphemes(true) { // 字形簇
+      println!("{}", g);
+  }
+  ```
+
++ Rust不允许对`String`进行索引的最后一个原因
+
+  + 索引操作应消耗一个常量时间 (O(1))
+  + 而`String`无法保证：需要遍历所有内容，来确定有多少个合法的字符
+
+#### 8.2.5 字符串slice
+
++ 可以使用`[]`和**一个范围**来创建字符串的切片
+
+  + 必须谨慎使用
+  + 如果切割时跨越了字符边界，程序就会`panic`
+
+  ```rust
+  let hello = "Здравствуйте";
+  let s = &hello[0..4];
+  println!("{}", s); // Зд
+  
+  let s1 = &hello[0..3];
+  println!("{}", s1); // panic
+  // byte index 3 is not a char boundary
+  ```
+
+#### 8.2.6 遍历String的方法
+
++ 对于标量值：`char()`方法
++ 对于字节：`byte()`方法
++ 对于字形簇：很复杂，标准库未提供
+
+#### 8.2.7 String并不简单
+
++ Rust选择将正确处理`String`数据作为所有Rust程序的默认行为
+  + 程序员必须在处理`UTF-8`数据之前投入更多的精力
++ 可以防止在开发后期处理涉及非`ASCII`字符的错误
+
+
+
+### 8.3 HashMap<K, V>
+
+`HashMap<K, V>` 类型储存了一个键类型 `K` 对应一个值类型 `V` 的映射。它通过一个 **哈希函数**（*hashing function*）来实现映射，决定如何将键和值放入内存中。
+
++ 键值对的形式存储数据，一个键（Key）对应一个值（Value）
++ `Hash`函数：决定如何在内存中存放`K`和`V`
+
+#### 8.3.1 创建HashMap
+
++ 创建空`HashMap`：`new()`函数
+
++ 添加数据：`insert()`方法
+
+  ```rust
+  use std::collections::HashMap;
+  let mut scores = HashMap::new();
+  scores.insert(String::from("Blue"), 10);
+  scores.insert(String::from("Yellow"), 50);
+  
+  ```
+
++ `HashMap`使用的比较少，因此不在`Prelude`中
+
++ 标准库对其支持比较少，没有内置的宏来创建`HashMap`
+
++ 数据存储在`heap`上
+
++ 同构的。一个`HashMap`中：
+
+  + 所有的`K`必须是同一种类型
+  + 所有的`V`必须是同一种类型
+
+#### 8.3.2 另一种创建HashMap的方式：collect方法
+
++ 在元素类型为`Tuple`的`Vector`上使用`collect`方法，可以组建一个`HashMap`
+
+  + 要求`Tuple`有两个值：一个作为`K`，一个作为`V`
+  + `collect`方法可以把数据整合成很多种集合类型，包括`HashMap`
+    + 返回值需要显式指明类型
+
+  ```rust
+  let teams = vec![String::from("Blue"), String::from("Yellow")];
+  let intial_scores = vec![10, 50];
+  
+  let scores: HashMap<_, _> = teams.iter().zip(intial_scores.iter()).collect();
+  
+  println!("{:?}", scores); // {"Blue": 10, "Yellow": 50}
+  ```
+
+  `zip()`接收一个参数，将调用者中的元素与参数中的元素一一对应组成`Tuple`，若数量不匹配，多的元素会被丢弃。`collect()`方法形成了一个`HashMap`，元素顺序并不固定，每次运行可能都不一样。当然`key -> value`的顺序是由`zip`一一对应的，不是由`collect`决定的
+
+#### 8.3.3 HashMap和所有权
+
++ 对于实现了`Copy trait`的类型（例如 i32），值会被复制到`HashMap`中
+
++ 对于拥有所有权的值（例如 String），值会被移动，所有权会被转移给`HashMap`
+
+  ```rust
+  let field_name = String::from("Favorite color");
+  let field_valule = String::from("Blue");
+  let mut map = HashMap::new();
+  map.insert(field_name, field_valule);
+  
+  println!("{}: {}", field_name, field_valule); // borrow of moved value
+  ```
+
++ 如果将值的引用插入到`HashMap`，值本身不会移动
+
+  + 在`HashMap`有效的期间，被引用的值必须保证有效
+
+  ```rust
+  let field_name = String::from("Favorite color");
+  let field_valule = String::from("Blue");
+  let mut map = HashMap::new();
+  map.insert(&field_name, &field_valule);
+  
+  println!("{}: {}", field_name, field_valule); // correct
+  ```
+
+#### 8.3.4 访问HashMap中的值
+
++ `get()`方法
+
+  + 参数：`K`
+  + 返回：`Option<&V>`
+
+  ```rust
+  let mut scores = HashMap::new();
+  scores.insert(String::from("blue"), 10);
+  scores.insert(String::from("Yellow"), 50);
+  
+  let team_name = String::from("blue");
+  let score = scores.get(&team_name);
+  
+  match score {
+      Some(s) => println!("{}", s),
+      None => println!("team not exist"),
+  }
+  ```
+
+#### 8.3.5 遍历HashMap
+
++ for循环
+
+  ```rust
+  let mut scores = HashMap::new();
+  scores.insert(String::from("blue"), 10);
+  scores.insert(String::from("Yellow"), 50);
+  
+  for (k, v) in &scores {
+      println!("{}: {}", k, v);
+  }
+  ```
+
+#### 8.3.6 更新HashMap<K, V>
+
++ `HashMap`大小可变
+
++ 每个`K`同时只能对应一个`V`
+
++ 更新`HashMap`中的数据
+
+  + `K`已经存在，对应一个`V`
+    + 替换现有的`V`
+    + 保留现有的`V`，忽略新的`V`
+    + 合并现有的`V`和新的`V`
+  + `K`不存在
+    + 添加一对新的`K, V`
+
++ 替换现有的`V`
+
+  + 如果向`HashMap`插入一对`K、V`，然后在插入相同的`K`，但是`V`不同，那么原来的`V`会被替换掉
+
+    ```rust
+    let mut scores = HashMap::new();
+    scores.insert(String::from("blue"), 10);
+    scores.insert(String::from("blue"), 20);
     
+    println!("{:?}", scores); // {"blue": 20}
+    ```
+
++ 只有`K`不对应任何值的情况下，才插入`V`
+
+  + `entry()`方法：检查指定的`K`是否对应一个`V`
+    + 参数为`K`
+    + 返回`enum Entry`：代表值是否存在
+  + `Entry`的`or_insert()`方法：
+    + 如果`K`存在，返回到对应的`V`的一个可变引用
+    + 如果`K`不存在，将方法参数作为`K`的新值插进去，返回到这个值的可变引用
+
+  ```rust
+  let mut scores = HashMap::new();
+  scores.insert(String::from("blue"), 10);
+  // scores.entry(String::from("yellow")).or_insert(50);
+  let e = scores.entry(String::from("yellow"));
+  println!("{:?}", e);
+  e.or_insert(50);
+  
+  scores.entry(String::from("blue")).or_insert(50);
+  println!("{:?}", scores);
+  ```
+
++ 基于现有的`V`来更新`V`
+
+  ```rust
+  let text = "hello world wonderful world";
+  let mut map = HashMap::new();
+  for word in text.split_whitespace() {
+      let count = map.entry(word).or_insert(0);
+      *count += 1;
+  }
+  println!("{:#?}", map); 
+  // {
+  //     "hello": 1,
+  //     "world": 2,
+  //     "wonderful": 1,
+  // }
+  ```
+
+#### 8.3.7 Hash函数
+
++ 默认情况下，`HashMap`使用加密功能强大的`Hash`函数，可以抵抗拒绝服务（Dos）攻击
+  + 不是可用的最快的`Hash`算法
+  + 但具有更好的安全性
++ 可以指定不同的`hasher`来切换到另一个函数
+  + `hasher`是实现了`BuildHasher trait`的类型
+
+
+
+## 9、错误处理
 
