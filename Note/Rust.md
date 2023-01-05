@@ -1630,8 +1630,8 @@ error[E0277]: `Rectangle` doesn't implement `std::fmt::Display`
 但是如果我们继续阅读错误，将会发现这个有帮助的信息：
 
 ```rust
-   = help: the trait `std::fmt::Display` is not implemented for `Rectangle`
-   = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+= help: the trait `std::fmt::Display` is not implemented for `Rectangle`
+= note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
 ```
 
 让我们来试试！现在 `println!` 宏调用看起来像 `println!("rect1 is {:?}", rect1);` 这样。在 `{}` 中加入 `:?` 指示符告诉 `println!` 我们想要使用叫做 `Debug` 的输出格式。`Debug` 是一个 trait，它允许我们以一种对开发者有帮助的方式打印结构体，以便当我们调试代码时能看到它的值
@@ -1645,8 +1645,8 @@ error[E0277]: `Rectangle` doesn't implement `Debug`
 不过编译器又一次给出了一个有帮助的信息：
 
 ```rust
-   = help: the trait `Debug` is not implemented for `Rectangle`
-   = note: add `#[derive(Debug)]` to `Rectangle` or manually `impl Debug for Rectangle`
+= help: the trait `Debug` is not implemented for `Rectangle`
+= note: add `#[derive(Debug)]` to `Rectangle` or manually `impl Debug for Rectangle`
 ```
 
 Rust **确实** 包含了打印出调试信息的功能，不过我们必须为结构体显式选择这个功能。为此，在结构体定义之前加上外部属性 `#[derive(Debug)]`
@@ -2996,5 +2996,47 @@ Rust 标准库中包含一系列被称为 **集合**（*collections*）的非常
 
 #### 8.2.4 对String按索引的形式进行访问
 
++ 按索引语法访问`String`的某部分，会报错
 
+  ```rust
+  let s1 = String::from("hello");
+  let h = s1[0];
+  ```
+
+  ```rust
+  error[E0277]: the type `String` cannot be indexed by `{integer}`
+  ```
+
+  Rust的字符串是不支持索引语法访问的
+
++ 内部表示
+
+  + `String`是对`Vec<u8>`的包装
+
+    + `len()`方法
+
+    ```rust
+    let len = String::from("Hola").len();
+    println!("{}", len); // 4
+    
+    let len = String::from("Здравствуйте").len();
+    println!("{}", len); // 24
+    
+    let hello = "Здравствуйте";
+    let answer = &hello[0];
+    // З: 208 151
+    ```
+
+    当使用 UTF-8 编码时，`З` 的第一个字节 `208`，第二个是 `151`，所以 `answer` 实际上应该是 `208`，不过 `208` 自身并不是一个有效的字母。返回 `208` 可不是一个请求字符串第一个字母的人所希望看到的，不过它是 Rust 在字节索引 0 位置所能提供的唯一数据。用户通常不会想要一个字节值被返回，即便这个字符串只有拉丁字母： 即便 `&"hello"[0]` 是返回字节值的有效代码，它也应当返回 `104` 而不是 `h`。
+
+    为了避免返回意外的值并造成不能立刻发现的 bug，Rust 根本不会编译这些代码，并在开发过程中及早杜绝了误会的发生。
+
+  + 字节、标量值和字形簇（Bytes、Scalar Values、Grapheme Clusters）
+
+    + Rust有三种看待字符串的方式
+      + 字节
+      + 表量值
+      + 字形簇（最接近“字母”的概念）
+
+    
 
