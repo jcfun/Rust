@@ -3281,3 +3281,132 @@ Rust 标准库中包含一系列被称为 **集合**（*collections*）的非常
 
 ## 9、错误处理
 
+错误是软件中不可否认的事实，所以 Rust 有一些处理出错情况的特性。在许多情况下，Rust 要求你承认错误的可能性，并在你的代码编译前采取一些行动。这一要求使你的程序更加健壮，因为它可以确保你在将代码部署到生产环境之前就能发现错误并进行适当的处理。
+
+Rust 将错误分为两大类：**可恢复的**（*recoverable*）和 **不可恢复的**（*unrecoverable*）错误。对于一个可恢复的错误，比如文件未找到的错误，我们很可能只想向用户报告问题并重试操作。不可恢复的错误总是 bug 出现的征兆，比如试图访问一个超过数组末端的位置，因此我们要立即停止程序。
+
+大多数语言并不区分这两种错误，并采用类似异常这样方式统一处理他们。Rust 没有异常。相反，它有 `Result<T, E>` 类型，用于处理可恢复的错误，还有 `panic!` 宏，在程序遇到不可恢复的错误时停止执行。
+
++ Rust的可靠性：错误处理
+  + 大部分情况下：在编译时提示错误并处理
++ 错误的分类：
+  + 可恢复
+    + 例如文件未找到，可再次尝试
+  + 不可恢复
+    + bug，例如访问的索引超出范围
++ Rust没有类似异常的机制
+  + 可恢复错误：`Result<T,E>`
+  + 不可恢复：`panic!`宏
+
+### 9.1 用 panic! 处理不可恢复的错误
+
++ 当`panic!`宏执行：
+  + 你的程序会打印一个错误信息
+  + 展开（unwind）、清理调用栈（Stack）
+  + 退出程序
+
+> ### 对应 panic 时的栈展开或终止
+>
+> 当出现 panic 时，程序默认会开始 **展开**（*unwinding*），这意味着 Rust 会回溯栈并清理它遇到的每一个函数的数据，不过这个回溯并清理的过程有很多工作。另一种选择是直接 **终止**（*abort*），这会不清理数据就退出程序。那么程序所使用的内存需要由操作系统来清理。如果你需要项目的最终二进制文件越小越好，panic 时通过在 *Cargo.toml* 的 `[profile]` 部分增加 `panic = 'abort'`，可以由展开切换为终止。例如，如果你想要在release模式中 panic 时直接终止：
+>
+> ```toml
+> [profile.release]
+> panic = 'abort'
+> ```
+
++ 默认情况下，当`panic`发生：
+
+  + 程序展开调用栈（工作量大）
+    + Rust沿着调用栈往回走
+    + 清理每个遇到的函数中的数据
+  + 立即终止调用栈
+    + 不进行清理，直接停止程序
+    + 内存需要OS进行清理
+
++ 想让二进制文件更小，把设置从“展开”改为“终止”
+
+  + 在`Cargo.toml`中适当的`profile`部分设置
+    + `panic=abort`
+
+  ```rust
+  fn main() {
+      // panic!("crash and burn");
+  
+      let v = vec![1, 2, 3];
+      v[99];
+  }
+  ```
+
++ `panic!`可能出现在：
+
+  + 我们写的代码中
+  + 我们所依赖的代码中
+
++ 可以通过调用`panic!`的函数的回溯信息来定位引起问题的代码
+
+  + 通过设置环境变量`RUST_BACKTRACE`可得到回溯信息
+
+  ```rust
+  export RUST_BACKTRACE=1 && cr                 [11:11:32]
+      Finished dev [unoptimized + debuginfo] target(s) in 0.00s
+       Running `target/debug/panic_demo`
+  thread 'main' panicked at 'index out of bounds: the len is 3 but the index is 99', src/main.rs:5:5
+  stack backtrace:
+     0: rust_begin_unwind
+               at /rustc/897e37553bba8b42751c67658967889d11ecd120/library/std/src/panicking.rs:584:5
+     1: core::panicking::panic_fmt
+               at /rustc/897e37553bba8b42751c67658967889d11ecd120/library/core/src/panicking.rs:142:14
+     2: core::panicking::panic_bounds_check
+               at /rustc/897e37553bba8b42751c67658967889d11ecd120/library/core/src/panicking.rs:84:5
+     3: <usize as core::slice::index::SliceIndex<[T]>>::index
+               at /rustc/897e37553bba8b42751c67658967889d11ecd120/library/core/src/slice/index.rs:250:10
+     4: core::slice::index::<impl core::ops::index::Index<I> for [T]>::index
+               at /rustc/897e37553bba8b42751c67658967889d11ecd120/library/core/src/slice/index.rs:18:9
+     5: <alloc::vec::Vec<T,A> as core::ops::index::Index<I>>::index
+               at /rustc/897e37553bba8b42751c67658967889d11ecd120/library/alloc/src/vec/mod.rs:2628:9
+     6: panic_demo::main
+               at ./src/main.rs:5:5
+     7: core::ops::function::FnOnce::call_once
+               at /rustc/897e37553bba8b42751c67658967889d11ecd120/library/core/src/ops/function.rs:248:5
+  note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+  ```
+
+  + 为了获取带有调试信息的回溯，必须启用调试符号（不带 `--release`）
+
+### 9.2 用Result处理可恢复的错误
+
+> 大部分错误并没有严重到需要程序完全停止执行。有时，一个函数会因为一个容易理解并做出反应的原因失败。例如，如果因为打开一个并不存在的文件而失败，此时我们可能想要创建这个文件，而不是终止进程。
+
+#### 9.2.1 Result枚举
+
+```rust
+enum Result<T, E> {
+    Ok(T),
+    Err(E),
+}
+```
+
++ `T`：操作成功情况下，`Ok`变体里返回的数据的类型
+
++ `E`：操作失败情况下，`Err`变体里返回的数据的类型
+
+  ```rust
+  let f = File::open("hello.txt");
+  ```
+
+#### 9.2.2 处理Result的一种方式：match表达式
+
++ 和`Option`枚举一样，`Result`及其变体也是由`prelude`带入作用域
+
+  ```rust
+  let f = File::open("hello.txt");
+  
+  let f = match f {
+      Ok(file) => file,
+      Err(error) => {
+          panic!("error opening file: {:?}", error)
+      }
+  };
+  ```
+
++ 匹配不同的错误
