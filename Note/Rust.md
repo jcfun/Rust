@@ -649,11 +649,11 @@ println!("{}", spaces);
   
   + 容量capacity是指`String`从内存分配器总共获得的内存的总字节数
   
-  ![String in memory](assets/String in memory.svg)
+  ![String in memory](assets/String_in_memory.svg)
   
   + 当我们将 `s1` 赋值给 `s2`，`String` 的数据被复制了，这意味着我们从栈上拷贝了它的指针、长度和容量。我们并没有复制指针指向的堆上数据。
   
-    ![the same value](the same value.svg)
+    ![the same value](the_same_value.svg)
   
   + 当变量离开作用域后，Rust 自动调用 `drop` 函数并清理变量的堆内存
   
@@ -700,7 +700,7 @@ println!("{}", spaces);
   
   + 如果你在其他语言中听说过术语 **浅拷贝**（*shallow copy*）和 **深拷贝**（*deep copy*），那么拷贝指针、长度和容量而不拷贝数据可能听起来像浅拷贝。不过因为 Rust 同时使第一个变量无效了，这个操作被称为 **移动**（*move*），而不是浅拷贝。上面的例子可以解读为 `s1` 被 **移动** 到了 `s2` 中。
   
-    ![s1 moved to s2](assets/s1 moved to s2.svg)
+    ![s1 moved to s2](assets/s1_moved_to_s2.svg)
   
   + 这里还隐含了一个设计选择：Rust 永远也不会自动创建数据的 “深拷贝”。因此，任何 **自动** 的复制可以被认为对运行时性能影响较小
   
@@ -865,7 +865,7 @@ println!("{}", spaces);
 
 + 我们传递 `&s1` 给 `calculate_length`，同时在函数定义中，我们获取 `&String` 而不是 `String`。这些 & 符号就是 **引用**，它们允许你使用值但不获取其所有权
 
-  ![&String s pointing at String s1](assets/&String s pointing at String s1.svg)
+  ![&String s pointing at String s1](assets/&String_s_pointing_at_String_s1.svg)
 
 #### 4.2.2 借用（borrowing）
 
@@ -1126,7 +1126,7 @@ fn change(some_string: &mut String) {
   + starting_index就是切片起始位置的索引值
   + ending_index是切片终止位置的下一个索引值
 
-  ![slice](assets\slice.svg)
+  ![slice](assets/slice.svg)
 
   + 字符串 slice range 的索引必须位于有效的 UTF-8 字符边界内
   + 如果尝试从一个多字节字符的中间位置创建字符串 slice，则程序将会因错误而退出

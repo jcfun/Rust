@@ -14,7 +14,7 @@
               "type": "markdown",
               "state": {
                 "file": "Rust.md",
-                "mode": "preview",
+                "mode": "source",
                 "source": false
               }
             }
@@ -67,7 +67,8 @@
               }
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "horizontal",
@@ -115,7 +116,7 @@
             }
           }
         ],
-        "currentTab": 2
+        "currentTab": 1
       }
     ],
     "direction": "horizontal",
@@ -131,10 +132,14 @@
       "table-editor-obsidian:Advanced Tables Toolbar": false
     }
   },
-  "active": "323aa07820369903",
+  "active": "ed375e7c203d6bef",
   "lastOpenFiles": [
-    "the.md",
+    "assets/the_same_value.svg",
+    "assets/String_in_memory.svg",
+    "assets/s1_moved_to_s2.svg",
+    "assets/&String_s_pointing_at_String_s1.svg",
     "Rust.md",
+    "the.md",
     "未命名.canvas",
     "springboot.md",
     "未命名.md"
