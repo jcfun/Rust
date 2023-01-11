@@ -4,5 +4,6 @@
   "foldHeading": true,
   "useMarkdownLinks": true,
   "legacyEditor": false,
-  "livePreview": true
+  "livePreview": true,
+  "attachmentFolderPath": "assets"
 }

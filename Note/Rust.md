@@ -649,11 +649,11 @@ println!("{}", spaces);
   
   + 容量capacity是指`String`从内存分配器总共获得的内存的总字节数
   
-  ![String in memory](assets\String in memory.svg)
+  ![String in memory](assets/String in memory.svg)
   
   + 当我们将 `s1` 赋值给 `s2`，`String` 的数据被复制了，这意味着我们从栈上拷贝了它的指针、长度和容量。我们并没有复制指针指向的堆上数据。
   
-    ![the same value](E:\Files\Learning\BackEnd\Rust\Note\assets\the same value.svg)
+    ![the same value](the same value.svg)
   
   + 当变量离开作用域后，Rust 自动调用 `drop` 函数并清理变量的堆内存
   
