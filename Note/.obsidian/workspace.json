@@ -43,13 +43,11 @@
             }
           },
           {
-            "id": "f5934f012c17e870",
+            "id": "dc0911e6cccda634",
             "type": "leaf",
             "state": {
-              "type": "outline",
-              "state": {
-                "file": "Rust.md"
-              }
+              "type": "quiet-outline",
+              "state": {}
             }
           },
           {
@@ -72,7 +70,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 239
+    "width": 274.5
   },
   "right": {
     "id": "d013f634489c97d8",
@@ -96,6 +94,16 @@
             "state": {
               "type": "git-view",
               "state": {}
+            }
+          },
+          {
+            "id": "f5934f012c17e870",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "Rust.md"
+              }
             }
           },
           {
@@ -134,11 +142,11 @@
   },
   "active": "ed375e7c203d6bef",
   "lastOpenFiles": [
+    "assets/&String_s_pointing_at_String_s1.svg",
+    "Rust.md",
     "assets/the_same_value.svg",
     "assets/String_in_memory.svg",
     "assets/s1_moved_to_s2.svg",
-    "assets/&String_s_pointing_at_String_s1.svg",
-    "Rust.md",
     "the.md",
     "未命名.canvas",
     "springboot.md",
