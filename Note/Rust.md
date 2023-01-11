@@ -3410,3 +3410,55 @@ enum Result<T, E> {
   ```
 
 + 匹配不同的错误
+
+  ```rust
+  let f = File::open("hello.txt");
+  
+  let f = match f {
+      Ok(file) => file,
+      Err(error) => match error.kind() {
+          ErrorKind::NotFound => match File::create("hello.txt") {
+              Ok(fc) => fc,
+              Err(e) => panic!("Error creating file: {:?}", e),
+          },
+          other_error => panic!("Error opening the file: {:?}", other_error),
+      },
+  };
+  ```
+
+  上例中使用了很多的`match!`，`match` 确实很强大，不过也非常的基础。第十三章我们会介绍闭包（closure），这可以用于很多 `Result<T, E>` 上定义的方法。在处理代码中的 `Result<T, E>` 值时这些方法可能会更加简洁。
+
+  ```rust
+  let f = File::open("hello.txt").unwrap_or_else(|error| {
+      if error.kind() == ErrorKind::NotFound {
+          File::create("hello.txt").unwrap_or_else(|error| {
+              panic!("Error creating file: {:?}", error);
+          })
+      } else {
+          panic!("Error opening file: {:?}", error);
+      }
+  });
+  ```
+
+#### 9.2.3 unwrap
+
+`match` 能够胜任它的工作，不过它可能有点冗长并且不总是能很好的表明其意图。`Result<T, E>` 类型定义了很多辅助方法来处理各种情况。其中之一叫做 `unwrap`，它的实现就类似于 `match` 语句。如果 `Result` 值是成员 `Ok`，`unwrap` 会返回 `Ok` 中的值。如果 `Result` 是成员 `Err`，`unwrap` 会为我们调用 `panic!`。
+
++ `unwrap`相当于`match`表达式的一个快捷方法
+  + 如果`Result`的结果是`Ok`，则返回`Ok`里面的值
+  + 如果`Result`的结果是`Err`，则调用`panic!`宏
+
+  ```rust
+    let f = File::open("hello.txt").unwrap();
+  ```
+
+#### 9.2.4 expect
+
++ `expect`和`unwrap`类似，但是可以指定错误信息
+
+    ```rust
+    let f = File::open("hello.txt").expect("无法打开文件 hello.txt");
+    ```
+
+  
+

@@ -122,6 +122,14 @@
                 "unlinkedCollapsed": true
               }
             }
+          },
+          {
+            "id": "384f480584e53ab4",
+            "type": "leaf",
+            "state": {
+              "type": "advanced-tables-toolbar",
+              "state": {}
+            }
           }
         ],
         "currentTab": 1
