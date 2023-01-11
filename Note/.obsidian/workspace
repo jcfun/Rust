@@ -1,0 +1,115 @@
+{
+  "main": {
+    "id": "77832be3888fc176",
+    "type": "split",
+    "children": [
+      {
+        "id": "7162bc35d4942d39",
+        "type": "leaf",
+        "state": {
+          "type": "markdown",
+          "state": {
+            "file": "未命名.md",
+            "mode": "source",
+            "source": false
+          }
+        }
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "431efc05d89d2f76",
+    "type": "split",
+    "children": [
+      {
+        "id": "7227838ff5891c4b",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "768e4b4bb3600178",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {}
+            }
+          },
+          {
+            "id": "6121c8821fd3969e",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              }
+            }
+          },
+          {
+            "id": "f5934f012c17e870",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "未命名.md"
+              }
+            }
+          }
+        ],
+        "currentTab": 2
+      }
+    ],
+    "direction": "horizontal",
+    "width": 239
+  },
+  "right": {
+    "id": "d013f634489c97d8",
+    "type": "split",
+    "children": [
+      {
+        "id": "3d5353b9c226a807",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "174d65ca708b895d",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "未命名.md",
+                "collapseAll": true,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              }
+            }
+          },
+          {
+            "id": "38baff722670c236",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "未命名.md"
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 261.4359130859375,
+    "collapsed": true
+  },
+  "active": "7162bc35d4942d39",
+  "lastOpenFiles": [
+    "未命名.md"
+  ]
+}
