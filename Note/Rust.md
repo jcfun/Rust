@@ -3460,5 +3460,199 @@ enum Result<T, E> {
     let f = File::open("hello.txt").expect("无法打开文件 hello.txt");
     ```
 
-  
 
+#### 9.2.5 传播错误
+
++ 在函数中处理错误
+
++ 将错误返回给调用者
+
+    ```rust
+    fn read_username_from_file() -> Result<String, io::Error> {
+        let f = File::open("hello.txt");
+    
+        let mut f = match f {
+            Ok(file) => file,
+            Err(e) => return Err(e),
+        };
+    
+        let mut s = String::new();
+        match f.read_to_string(&mut s) {
+            Ok(_) => Ok(s),
+            Err(e) => Err(e),
+        }
+    }
+    
+    let reuslt = read_username_from_file();
+    ```
+
+#### 9.2.6 ? 运算符
+
++ 传播错误的一种快捷方式
+
+  ```rust
+  fn read_username_from_file() -> Result<String, io::Error> {
+      let mut f = File::open("hello.txt")?;
+      let mut s = String::new();
+      f.read_to_string(&mut s)?;
+      Ok(s)
+  }
+  ```
+
+  如果`Result`是`Ok`：`Ok`中的值就是表达式的结果，然后继续执行程序；如果`Result`是`Err`：`Err`就是整个函数的返回值，就像使用了`return`		
+
++ `?`与`from`函数
+
+  + `Trait std::convert::From`上的`from函数`
+    + 用于错误之间的转换
+  + 被`?`所应用的错误，会隐式的被`from`函数处理
+    + 当`?`调用函数时，它所接收的错误类型会被转化为当前函数返回类型所定义的错误类型
+  + 针对不同的错误原因，返回同一种错误类型
+    + 只要每个错误类型实现了转换为所返回的错误类型的`from`函数
+
++ 链式调用
+
+  ```rust
+  fn read_username_from_file() -> Result<String, io::Error> {
+      let mut s = String::new();
+      File::open("hello.txt")?.read_to_string(&mut s)?;
+      Ok(s)
+  }
+  ```
+
++ `?`运算符只能用于返回`Result`的函数
+
+  ```rust
+  fn main() {
+      let f = File::open("hello.txt")?;
+  }
+  ```
+
+  很明显`main()`函数的返回值是`()`，因此并不能使用`?`运算符
+
+  ```rust
+  error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)
+  
+  fn main() {
+      | --------- this function should return `Result` or `Option` to accept `?`
+      
+  cannot use the `?` operator in a function that returns `()`
+  ```
+
++ `main()`函数的返回类型也可以是：`Result<T, E>`
+
+  ```rust
+  fn main() -> Result<(), Box<dyn Error>> {
+      let f = File::open("hello.txt")?;
+      Ok(())
+  }
+  ```
+
+  `Box<dyn Error>`是`trait`对象：
+
+  + 简单理解：“任何可能的错误类型”
+
+
+
+### 9.3 何时使用panic!
+
++ 在定义一个可能失败的函数时，优先考虑返回`Result`
++ 否则就选择`panic!`
+
+#### 9.3.1 编写示例、原型代码、测试
+
++ 可以使用`panic!`
+  + 演示某些概念：`unwrap`
+  + 原型代码：`unwrap`、`expect`
+  + 测试：`unwrap`、`expect`
+
+#### 9.3.2 当我们比编译器知道更多的情况
+
++ 你可以确定`Result`就是`Ok`：`unwrap`
+
+  ```rust
+  let home: IpAddr = "127.0.0.1".parse().unwrap();
+  ```
+
+#### 9.3.3 错误处理的指导性建议
+
++ 当代码最终可能处于损坏状态时，最好使用`panic!`
++ 损坏状态（Bad state）：某些假设、保证、约定或不可变性被打破
+  + 例如非法的值、矛盾的值或空缺的值被传入代码
+  + 以及下列中的一条：
+    + 这种损坏状态并不是预期能够偶尔发生的事情
+    + 在此之后，你的代码如果处于这种损坏状态就无法运行
+    + 在你使用的类型中没有一个好的方法来将这些信息（处于损坏状态）进行编码
++ 场景建议
+  + 调用你的代码，传入无意义的参数值：`panic!`
+  + 调用外部不可控代码，返回非法状态，你无法修复：`panic!`
+  + 如果失败是可预期的：`Result`
+  + 当你的代码对值进行操作，首先应该验证这些值：`panic!`
+
+#### 9.3.4 创建自定义类型进行有效性验证
+
++ 创建新的类型，把验证逻辑放在构造实例的函数里
+
+  ```rust
+  loop {
+      // ...
+  
+      let guess = "32";
+      let guess: i32 = match guess.trim().parse() {
+          Ok(num) => num,
+          Err(_) => continue,
+      };
+  
+      if guess < 1 || guess > 100 {
+          println!("The secret number will be between 1 and 100");
+          continue;
+      }
+  
+      // ...
+  }
+  ```
+
+  `if` 表达式检查了值是否超出范围，告诉用户出了什么问题，并调用 `continue` 开始下一次循环，请求另一个猜测。`if` 表达式之后，就可以在知道 `guess` 在 1 到 100 之间的情况下与秘密数字作比较了。
+
+  然而，这并不是一个理想的解决方案：如果让程序仅仅处理 1 到 100 之间的值是一个绝对需要满足的要求，而且程序中的很多函数都有这样的要求，在每个函数中都有这样的检查将是非常冗余的（并可能潜在的影响性能）。
+
+  ```rust
+  pub struct Guess {
+      value: i32,
+  }
+  
+  impl Guess {
+      pub fn new(value: i32) -> Guess {
+          if value < 1 || value > 100 {
+              panic!("Guess value must be between 1 and 100, got {}", value);
+          }
+          Guess { value }
+      }
+  
+      pub fn value(&self) -> i32 {
+          self.value
+      }
+  }
+  
+  loop {
+      // ...
+  
+      let guess = "32";
+      let guess: i32 = match guess.trim().parse() {
+          Ok(num) => num,
+          Err(_) => continue,
+      };
+  
+      let guess = Guess::new(guess);
+  
+      // ...
+  }
+  ```
+
+  我们可以创建一个新类型来将验证放入创建其实例的函数中，而不是到处重复这些检查。这样就可以安全的在函数签名中使用新类型并相信他们接收到的值。上例中创建了新的类型，把验证逻辑放在构造实例的函数里。其中`getter`（value()）用于返回字段的数据，这样做的原因是`value`字段是私有的，外部`mod`无法直接对字段的值进行修改与访问，只能通过`new()`来进行实例化，以避免程序跳过构造方法的安全检查，这样就可以保证guess实例的值都是合法的。
+
+
+
+## 10、泛型、Trait、生命周期
+
+### 10.1 提取函数来减少重复
