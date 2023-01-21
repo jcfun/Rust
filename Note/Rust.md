@@ -3656,3 +3656,392 @@ enum Result<T, E> {
 ## 10、泛型、Trait、生命周期
 
 ### 10.1 提取函数来减少重复
+
+```rust
+fn main() {
+    let number_list = vec![34, 50, 25, 100, 65];
+
+    let mut largest = &number_list[0];
+
+    for number in &number_list {
+        if number > largest {
+            largest = number;
+        }
+    }
+
+    println!("The largest number is {}", largest);
+
+    let number_list = vec![102, 34, 6000, 89, 54, 2, 43, 8];
+
+    let mut largest = &number_list[0];
+
+    for number in &number_list {
+        if number > largest {
+            largest = number;
+        }
+    }
+
+    println!("The largest number is {}", largest);
+}
+```
+
+在两个不同的数字列表中寻找最大值。虽然代码能够执行，但是重复的代码是冗余且容易出错的，更新逻辑时我们不得不记住需要修改多处地方的代码。
+
+为了消除重复，我们要创建一层抽象，定义一个处理任意整型列表作为参数的函数。这个方案使得代码更简洁，并且表现了寻找任意列表中最大值这一概念。
+
+```rust
+fn largest(list: &[i32]) -> &i32 {
+    let mut largest = &list[0];
+
+    for item in list {
+        if item > largest {
+            largest = item;
+        }
+    }
+
+    largest
+}
+
+fn main() {
+    let number_list = vec![34, 50, 25, 100, 65];
+
+    let result = largest(&number_list);
+    println!("The largest number is {}", result);
+
+    let number_list = vec![102, 34, 6000, 89, 54, 2, 43, 8];
+
+    let result = largest(&number_list);
+    println!("The largest number is {}", result);
+}
+```
+
+将寻找最大值的代码提取到了一个叫做 `largest` 的函数中。接着我们调用了寻找两个列表中最大值的函数。
+
+`largest` 函数有一个参数 `list`，它代表会传递给函数的任何具体的 `i32`值的 slice。函数定义中的 `list` 代表任何 `&[i32]`。当调用 `largest` 函数时，其代码实际上运行于我们传递的特定值上。
+
+### 10.2 泛型（generic）
+
++ 提高代码的复用能力
+  + 处理重复代码的问题
++ 泛型是具体类型或其它属性的抽象替代
+  + 你编写的代码并不是最终的代码，而是一种模板，里面有一些“占位符”
+  + 编译器在编译时会将“占位符”替换为具体的类型
++ 例如：`fn largest<T>(list: &[T]) -> T {...}`
+  + T（type）：类型参数
+    + 很短，通常是一个字母
+    + CamelCase
+
+#### 10.2.1 函数定义中使用泛型
+
++ 泛型函数
+
+  + 参数类型
+  + 返回类型
+
+  ```rust
+  fn largest<T>(list: &[T]) -> &T {
+      let mut largest = &list[0];
+      for item in list {
+          if item > largest {
+              largest = item;
+          }
+      }
+      largest
+  }
+  ```
+
+  ```rust
+  error[E0369]: binary operation `>` cannot be applied to type `&T`
+   --> src/main.rs:5:17
+    |
+  5 |         if item > largest {
+    |            ---- ^ ------- &T
+    |            |
+    |            &T
+    |
+  help: consider restricting type parameter `T`
+    |
+  1 | fn largest<T: std::cmp::PartialOrd>(list: &[T]) -> &T {
+    |             ++++++++++++++++++++++
+  
+  For more information about this error, try `rustc --explain E0369`.
+  error: could not compile `chapter10` due to previous error
+  ```
+
+  帮助说明中提到了 `std::cmp::PartialOrd`，这是一个 *trait*。简单来说，这个错误表明 `largest` 的函数体不能适用于 `T` 的所有可能的类型。因为在函数体需要比较 `T` 类型的值，不过它只能用于我们知道如何排序的类型。为了开启比较功能，标准库中定义的 `std::cmp::PartialOrd` trait 可以实现类型的比较功能。
+
+#### 10.2.2 Struct定义中的泛型 
+
+```rust
+struct Point<T> {
+    x: T, 
+    y: T,
+}
+
+let integer = Point{ x: 5, y: 10 };
+let float = Point{ x: 1.0, y: 4.0};
+
+
+struct Point<T, U> {
+    x: T, 
+    y: U,
+}
+
+let number = Point{ x: 5, y: 1.0 };
+```
+
+在`struct`中可以使用多个泛型的类型参数，但是如果类型参数过多，则代码需要重组为多个更小的单元。
+
+#### 10.2.3 Enum定义中的泛型
+
++ 可以让枚举的变体持有泛型数据类型
+
+  + 例如`Option<T>`，`Result<T, E>`
+
+  ```rust
+  enum Option<T> {
+      Some(T),
+      None,
+  }
+  
+  enum Result<T, E> {
+      Ok(T),
+      Err(E),
+  }
+  ```
+
+#### 10.2.4 方法定义中的泛型
+
++ 为`struct`或`enum`实现方法的时候，可以在定义使用泛型
+
+  ```rust
+  struct Point<T> {
+      x: T,
+      y: T,
+  }
+  
+  impl<T> Point<T> {
+      fn x(&self) -> &T {
+          &self.x
+      }
+  }
+  
+  impl Point<i32> {
+      fn x(&self) -> &i32 {
+          &self.x
+      }
+  }
+  ```
+
++ 把`T`放在`impl`关键字后，表示在类型`T`上实现方法
+
+  + 例如：`impl<T> Point<T>`
+
++ 只针对具体类型实现方法（其余类型没实现方法）
+
+  + 例如：`impl Point<i32>`
+
++ `struct`里的泛型类型参数可以和方法的泛型类型参数不同
+
+  ```rust
+  struct Point<X1, Y1> {
+      x: X1,
+      y: Y1,
+  }
+  
+  impl<X1, Y1> Point<X1, Y1> {
+      fn mixup<X2, Y2>(self, other: Point<X2, Y2>) -> Point<X1, Y2> {
+          Point {
+              x: self.x,
+              y: other.y,
+          }
+      }
+  }
+  
+  fn main() {
+      let p1 = Point { x: 5, y: 10.4 };
+      let p2 = Point { x: "Hello", y: 'c' };
+  
+      let p3 = p1.mixup(p2);
+  
+      println!("p3.x = {}, p3.y = {}", p3.x, p3.y);
+  }
+  ```
+
+#### 10.2.5 泛型代码的性能
+
++ 使用泛型的代码和使用具体类型的代码运行速度是一样的
+
++ 单态化（monomorphization）
+
+  + 在编译时将泛型替换为具体类型的过程
+
+  ```rust
+  let integer = Some(5);
+  let float = Some(5.0);
+  ```
+
+  当 Rust 编译这些代码的时候，它会进行单态化。编译器会读取传递给 `Option<T>` 的值并发现有两种 `Option<T>`：一个对应 `i32` 另一个对应 `f64`。为此，它会将泛型定义 `Option<T>` 展开为两个针对 `i32` 和 `f64` 的定义，接着将泛型定义替换为这两个具体的定义。
+
+  编译器生成的单态化版本的代码看起来像这样（编译器会使用不同于如下假想的名字）：
+
+  ```rust
+  enum Option_i32 {
+      Some(i32),
+      None,
+  }
+  
+  enum Option_f64 {
+      Some(f64),
+      None,
+  }
+  
+  fn main() {
+      let integer = Option_i32::Some(5);
+      let float = Option_f64::Some(5.0);
+  }
+  ```
+
+  泛型 `Option<T>` 被编译器替换为了具体的定义。因为 Rust 会将每种情况下的泛型代码编译为具体类型，使用泛型没有运行时开销。当代码运行时，它的执行效率就跟好像手写每个具体定义的重复代码一样。这个单态化过程正是 Rust 泛型在运行时极其高效的原因。
+
+
+
+### 10.3 Trait
+
++ `Trait`告诉Rust编译器
+  + 某种类型具有哪些并且可以与其它类型共享的功能
++ 抽象的定义共享行为
++ `Trait bounds`（约束）
+  + 泛型类型参数指定为实现了特定行为的类型
++ `trait`与其它语言的接口（interface）类似，但有些区别
+
+#### 10.3.1 定义一个Trait
+
++ `Trait`的定义：把方法签名放在一起，来定义实现某种目的所必需的一组行为
+
+  + 关键字：`trait`
+  + 只有方法签名，没有具体实现
+  + `trait`可以有多个方法：每个方法签名占一行，以`;`结尾
+  + 实现该`trait`的类型必须提供具体的方法实现
+
+  ```rust
+  pub trait Summary {
+      fn summarize(&self) -> String;
+  }
+  ```
+
+#### 10.3.2 为类型实现trait
+
++ 与为类型实现方法类似
+
++ 不同之处
+
+  + `impl Xxxx for Tweet {...}`
+  + 在`impl`块中，需要对`Trait`里的方法签名进行具体的实现
+
+  ```rust
+  pub trait Summary {
+      fn summarize(&self) -> String;
+  }
+  
+  pub struct NewsArticle {
+      pub headline: String,
+      pub location: String,
+      pub author: String,
+      pub content: String,
+  }
+  
+  impl Summary for NewsArticle {
+      fn summarize(&self) -> String {
+          format!("{}, by {} ({})", self.headline, self.author, self.location)
+      }
+  }
+  
+  pub struct Tweet {
+      pub username: String,
+      pub content: String,
+      pub reply: bool,
+      pub retweet: bool,
+  }
+  
+  impl Summary for Tweet {
+      fn summarize(&self) -> String {
+          format!("{}: {}", self.username, self.content)
+      }
+  }
+  
+  
+  
+  use trait_demo::{Tweet, Summary};
+  
+  fn main() {
+      let tweet = Tweet {
+          username: String::from("horse_ebooks"),
+          content: String::from("of course, as you probably already konw, people"),
+          reply: false,
+          retweet: false,
+      };
+  
+      println!("1 new tweet: {}", tweet.summarize())
+  }
+  ```
+
+#### 10.3.3 实现trait的约束
+
++ 可以在某个类型上实现某个`trait`的前提条件是
+  + 这个类型或这个`trait`至少有一个是在本地`crate`里定义的
++ 无法为外部类型来实现外部的`trait`
+  + 这个限制是程序属性的一部分，也就是**相干性（*coherence*）**
+  + 更具体地说是**孤儿原则（*orphan rule*）**：之所以这样命名是因为父类型不存在
+  + 此规则确保其他人的代码不能破坏您的代码，反之亦然
+  + 如果没有这个规则，两个`crate`可以为同一类型实现同一个`trait`，Rust就不知道应该使用哪个实现了
+
+#### 10.3.4 默认实现
+
+```rust
+pub trait Summary {
+    fn summarize(&self) -> String {
+        String::from("(Read more...)")
+    }
+}
+
+let article = NewsArticle {
+        headline: String::from("Penguins win the Stanley Cup Championship!"),
+        location: String::from("Pittsburgh, PA, USA"),
+        author: String::from("Iceburgh"),
+        content: String::from(
+            "The Pittsburgh Penguins once again are the best \
+             hockey team in the NHL.",
+        ),
+    };
+
+    println!("New article available! {}", article.summarize());
+
+
+pub trait Summary {
+    fn summarize_author(&self) -> String;
+
+    fn summarize(&self) -> String {
+        format!("(Read more from {}...)", self.summarize_author())
+    }
+}
+
+impl Summary for Tweet {
+    fn summarize_author(&self) -> String {
+        format!("@{}", self.username)
+    }
+}
+
+let tweet = Tweet {
+        username: String::from("horse_ebooks"),
+        content: String::from(
+            "of course, as you probably already know, people",
+        ),
+        reply: false,
+        retweet: false,
+    };
+
+println!("1 new tweet: {}", tweet.summarize());
+```
+
+默认实现的方法可以调用`trait`中其它的方法，即使这些方法没有默认实现。但是无法从方法的重写实现里面调用默认的实现。
