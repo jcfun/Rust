@@ -19,10 +19,10 @@ fn main() {
 
 
 
-    // fn largest<T>(list: &[T]) -> &T {
+    // fn largest<T: PartialOrd>(list: &[T]) -> &T {
     //     let mut largest = &list[0];
     //     for item in list {
-    //         if item > largest {
+    //         if item > largest { // std::cmp::PartialOrd
     //             largest = item;
     //         }
     //     }

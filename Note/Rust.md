@@ -4006,16 +4006,16 @@ pub trait Summary {
 }
 
 let article = NewsArticle {
-        headline: String::from("Penguins win the Stanley Cup Championship!"),
-        location: String::from("Pittsburgh, PA, USA"),
-        author: String::from("Iceburgh"),
-        content: String::from(
-            "The Pittsburgh Penguins once again are the best \
-             hockey team in the NHL.",
-        ),
-    };
+    headline: String::from("Penguins win the Stanley Cup Championship!"),
+    location: String::from("Pittsburgh, PA, USA"),
+    author: String::from("Iceburgh"),
+    content: String::from(
+        "The Pittsburgh Penguins once again are the best \
+        hockey team in the NHL.",
+    ),
+};
 
-    println!("New article available! {}", article.summarize());
+println!("New article available! {}", article.summarize());
 
 
 pub trait Summary {
@@ -4033,15 +4033,186 @@ impl Summary for Tweet {
 }
 
 let tweet = Tweet {
-        username: String::from("horse_ebooks"),
-        content: String::from(
-            "of course, as you probably already know, people",
-        ),
-        reply: false,
-        retweet: false,
-    };
+    username: String::from("horse_ebooks"),
+    content: String::from(
+        "of course, as you probably already know, people",
+    ),
+    reply: false,
+    retweet: false,
+};
 
 println!("1 new tweet: {}", tweet.summarize());
 ```
 
 默认实现的方法可以调用`trait`中其它的方法，即使这些方法没有默认实现。但是无法从方法的重写实现里面调用默认的实现。
+
+#### 10.3.5 Trait作为参数
+
++ `impl Trait`语法：适用于简单情况
+
+  ```rust
+  pub fn notify(item: impl Summary) {
+      println!("Breaking news! {}", item.summarize());
+  }
+  ```
+
++ `Trait bound`语法：可用于复杂情况
+
+  + `impl Trait`语法是`Trait bound`的语法糖
+
+  ```rust
+  pub fn notify<T: Summary>(item: T) {
+      println!("Breaking news! {}", item.summarize());
+  }
+  ```
+
++ 使用`+`指定多个`Trait bound`
+
+  ```rust
+  pub fn notify1(item: impl Summary + Display) {
+      println!("Breaking news! {}", item.summarize());
+  }
+  
+  
+  pub fn notify<T: Summary + Display>(item: T) {
+      println!("Breaking news! {}", item.summarize());
+  }
+  ```
+
++ `Trait bound`使用`where`子句
+
+  + 在方法签名后指定where子句
+
+  ```rust
+  pub fn notify2<T, U>(a: T, b: U) -> String
+  where 
+      T: Summary + Display,
+      U: Clone + Debug,
+  {
+      format!("Breaking news! {}", a.summarize())
+  }
+  ```
+
+#### 10.3.6 实现Trait作为返回类型
+
++ `impl Trait`语法
+
+  ```rust
+  pub fn returns_summarizable() -> impl Summary {
+      Tweet {
+          username: String::from("horse_ebooks"),
+          content: String::from(
+              "of course, as you probably already know, people",
+          ),
+          reply: false,
+          retweet: false,
+      }
+  }
+  ```
+
+  `impl Trait`只能返回确定的同一种类型，返回可能不同类型的代码会报错
+
+  ```rust
+  fn returns_summarizable(switch: bool) -> impl Summary {
+      if switch {
+          NewsArticle {
+              headline: String::from(
+                  "Penguins win the Stanley Cup Championship!",
+              ),
+              location: String::from("Pittsburgh, PA, USA"),
+              author: String::from("Iceburgh"),
+              content: String::from(
+                  "The Pittsburgh Penguins once again are the best \
+                   hockey team in the NHL.",
+              ),
+          }
+      } else {
+          Tweet {
+              username: String::from("horse_ebooks"),
+              content: String::from(
+                  "of course, as you probably already know, people",
+              ),
+              reply: false,
+              retweet: false,
+          }
+      }
+  }
+  ```
+
+  这里尝试返回 `NewsArticle` 或 `Tweet`，这将会产生错误。
+
+#### 10.3.7 使用Trait Bound的例子
+
++ 修复`largest`函数
+
+  ```rust
+  fn largest<T: PartialOrd>(list: &[T]) -> &T {
+      let mut largest = &list[0];
+      for item in list {
+          if item > largest { // std::cmp::PartialOrd
+              largest = item;
+          }
+      }
+      largest
+  }
+  
+  
+  fn largest<T: PartialOrd + Clone>(list: &[T]) -> T {
+      let mut largest = list[0].clone();
+      for item in list.iter() {
+          if item > &largest { // std::cmp::PartialOrd
+              largest = item.clone();
+          }
+      }
+      largest
+  }
+  ```
+
+#### 10.3.8 使用Trait Bound有条件的实现方法
+
++ 在使用泛型类型参数的`impl`块上使用`Trait bound`，我们可以有条件的为实现了特定`Trait`的类型来实现方法
+
+  ```rust
+  struct Pair<T> {
+      x: T,
+      y: T,
+  }
+  
+  impl<T> Pair<T> {
+      fn new(x: T, y: T) -> Self {
+          Self { x, y }
+      }
+  }
+  
+  impl<T: Display + PartialOrd> Pair<T> {
+      fn cmp_display(&self) {
+          if self.x >= self.y {
+              println!("The largest member is x = {}", self.x);
+          } else {
+              println!("The largest member is y = {}", self.y);
+          }
+      }
+  }
+  ```
+
+  类型 `Pair<T>` 总是实现了 `new` 方法并返回一个 `Pair<T>` 的实例（回忆一下第五章的 ["定义方法"](https://kaisery.github.io/trpl-zh-cn/ch05-03-method-syntax.html#定义方法) 部分，`Self` 是一个 `impl` 块类型的类型别名（type alias），在这里是 `Pair<T>`）。不过在下一个 `impl` 块中，只有那些为 `T` 类型实现了 `PartialOrd` trait （来允许比较） **和** `Display` trait （来启用打印）的 `Pair<T>` 才会实现 `cmp_display` 方法。
+
++ 也可以为实现了其它`Trait`的任意类型有条件的实现某个`Trait`
+
++ 为满足`Trait Bound`的所有类型上实现`Trait`叫做覆盖实现（blanket implementations）
+
+  ```rust
+  impl<T: Display> ToString for T {
+      // --snip--
+  }
+  ```
+
+  标准库为任何实现了 `Display` trait 的类型实现了 `ToString` trait。
+
+  因为标准库有了这些 blanket implementation，我们可以对任何实现了 `Display` trait 的类型调用由 `ToString` 定义的 `to_string` 方法。
+
+  ```rust
+  let s = 3.to_string();
+  ```
+
+  
