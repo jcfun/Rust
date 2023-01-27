@@ -511,7 +511,7 @@ println!("{}", spaces);
   + 当向堆放入数据时，你要请求一定大小的空间。
   + 内存分配器（memory allocator）在堆的某处找到一块足够大的空位，把它标记为已使用，并返回一个表示该位置地址的 **指针**（*pointer*）。这个过程称作 **在堆上分配内存**（*allocating on the heap*），有时简称为 “分配”（allocating）内存分配器（memory allocator）在堆的某处找到一块足够大的空位，把它标记为已使用，并返回一个表示该位置地址的 **指针**（*pointer*）。这个过程称作 **在堆上分配内存**（*allocating on the heap*），有时简称为 “分配”（allocating）
 + 把值压到stack上不叫分配，因为指针的大小是已知固定的，可以把指针存放在stack上
-  + 但如果像要访问实际数据，则必须使用指针来定位
+  + 但如果想要访问实际数据，则必须使用指针来定位
 + 入栈比在堆上分配内存要快
   + 因为（入栈时）分配器无需为存储新数据去搜索内存空间；其位置总是在栈顶
   + 相比之下，在堆上分配内存则需要更多的工作，这是因为分配器必须首先找到一块足够存放数据的内存空间，并接着做一些记录为下一次分配做准备。
@@ -551,7 +551,7 @@ println!("{}", spaces);
 
 + `String`比基础标量数据类型更复杂
 
-+ 字符串字面值：程序里手写的哪些字符串值。它们是不可变的
++ 字符串字面值：程序里手写的那些字符串值。它们是不可变的
 
 + Rust还有第二种字符串类型：String
 
@@ -4215,4 +4215,1493 @@ println!("1 new tweet: {}", tweet.summarize());
   let s = 3.to_string();
   ```
 
+
+
+### 10.4 生命周期
+
++ Rust的每个引用都有自己的生命周期
++ 生命周期：引用保持有效的作用域
++ 大多数情况：生命周期是隐式的、可被推断的
++ 当引用的生命周期可能以不同的方式互相关联时：手动标注生命周期
+
+#### 10.4.1 生命周期 - 避免悬垂引用（dangling reference）
+
++ 生命周期的主要目标：避免悬垂引用（dangling reference）
+
+  ```rust
+  fn main() {
+      {
+          let r;
+          {
+              let x = 5;
+              r = &x;
+          }
+          println!("r: {}", r);
+      }
+  }
+  ```
+
+  ```rust
+  |
+  |             r = &x;
+  |                 ^^ borrowed value does not live long enough
+  |         }
+  |         - `x` dropped here while still borrowed
+  |         println!("r: {}", r);
+  |                           - borrow later used here
+  ```
+
++ **借用检查器**
+
+  + Rust编译器的借用检查器：比较作用域来判断所有的借用是否合法
+
+  ```rust
+  fn main() {
+      let r;                // ---------+-- 'a
+                            //          |
+      {                     //          |
+          let x = 5;        // -+-- 'b  |
+          r = &x;           //  |       |
+      }                     // -+       |
+                            //          |
+      println!("r: {}", r); //          |
+  }     
+  ```
+
+  这里将 `r` 的生命周期标记为 `'a` 并将 `x` 的生命周期标记为 `'b`。如你所见，内部的 `'b` 块要比外部的生命周期 `'a` 小得多。在编译时，Rust 比较这两个生命周期的大小，并发现 `r` 拥有生命周期 `'a`，不过它引用了一个拥有生命周期 `'b` 的对象。程序被拒绝编译，因为生命周期 `'b` 比生命周期 `'a` 要小：被引用的对象比它的引用者存在的时间更短。
+
+  ```rust
+  fn main() {
+      let x = 5;            // ----------+-- 'b
+                            //           |
+      let r = &x;           // --+-- 'a  |
+                            //   |       |
+      println!("r: {}", r); //   |       |
+                            // --+       |
+  }                         // ----------+
+  ```
+
+  这里 `x` 拥有生命周期 `'b`，比 `'a` 要大。这就意味着 `r` 可以引用 `x`：Rust 知道 `r` 中的引用在 `x` 有效的时候也总是有效的。
+
+#### 10.4.2 函数中的生命周期
+
+```rust
+let string1 = String::from("abcd");
+let string2 = "xyz";
+
+let result = longest(string1.as_str(), string2);
+println!("The longest string is {}", result);
+
+
+fn longest(x: &str, y: &str) -> &str {
+    if x.len() > y.len() {
+        x
+    } else {
+        y
+    }
+}
+```
+
+```rust
+|
+|     fn longest(x: &str, y: &str) -> &str {
+|                   ----     ----     ^ expected named lifetime parameter
+|
+   = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from `x` or `y`
+help: consider introducing a named lifetime parameter
+|
+|     fn longest<'a>(x: &'a str, y: &'a str) -> &'a str {
+|               ++++     ++          ++          ++
+```
+
+提示文本揭示了返回值需要一个泛型生命周期参数，因为 Rust 并不知道将要返回的引用是指向 `x` 或 `y`。事实上我们也不知道，因为函数体中 `if` 块返回一个 `x` 的引用而 `else` 块返回一个 `y` 的引用！
+
+当我们定义这个函数的时候，并不知道传递给函数的具体值，所以也不知道到底是 `if` 还是 `else` 会被执行。我们也不知道传入的引用的具体生命周期，所以也就不能像上例那样通过观察作用域来确定返回的引用是否总是有效。借用检查器自身同样也无法确定，因为它不知道 `x` 和 `y` 的生命周期是如何与返回值的生命周期相关联的。为了修复这个错误，我们将增加泛型生命周期参数来定义引用间的关系以便借用检查器可以进行分析。
+
+#### 10.4.3 生命周期标注语法
+
++ 生命周期的标注并不会改变引用的生命周期长度
++ 当指定了泛型生命周期参数，函数可以接受带有任何生命周期的引用
++ 生命周期的标注：描述了多个引用的生命周期间的关系，但不影响生命周期
++ 语法
+  + 生命周期参数名
+    + 以`'`开头
+    + 通常全小写且非常短
+    + 许多人习惯使用`'a`
+  + 生命周期标注的位置
+    + 在引用的`&`符号后
+    + 使用空格将标注和引用类型分开
+  + 例
+    + `&i32`    // 一个引用
+    + `&'a i32`    //带有显式生命周期的引用
+    + `&'a mut i32`    //带有显式生命周期的可变引用
++ 单个生命周期标注本身没有意义
+
+#### 10.4.4 函数签名中的生命周期标注
+
++ 泛型生命周期参数声明在函数名和参数列表之间的`<>`里
+
+  ```rust
+  fn longest<'a>(x: &'a str, y: &'a str) -> &'a str {
+      if x.len() > y.len() {
+          x
+      } else {
+          y
+      }
+  }
+  ```
+
++ 生命周期`'a`的实际生命周期是：x 和 y 两个生命周期中较小的那个
+
+  ```rust
+  fn longest<'a>(x: &'a str, y: &'a str) -> &'a str {
+      if x.len() > y.len() {
+          x
+      } else {
+          y
+      }
+  }
   
+  let string1 = String::from("long string is long");
+  let result;
+  {
+      let string2 = String::from("xyz");
+      result = longest(string1.as_str(), string2.as_str());
+  }
+  println!("The longest string is {}", result);
+  ```
+
+#### 10.4.5 深入理解生命周期
+
++ 指定生命周期参数的方式依赖于函数所做的事情
+
+  ```rust
+  fn longest<'a>(x: &'a str, y: &str) -> &'a str {
+      x
+  }
+  ```
+
+  如果将 `longest` 函数的实现修改为总是返回第一个参数而不是最长的字符串 slice，就不需要为参数 `y` 指定一个生命周期。
+
++ 从函数返回引用时，返回类型的生命周期参数需要与其中一个参数的生命周期匹配
+
++ 如果返回的引用没有指向任何参数，那么它只能引用函数内创建的值
+
+  +  这就是悬垂引用：该值在函数结束时就走出了作用域
+
+  ```rust
+  fn longest<'a>(x: &'a str, y: &'a str) -> &'a str {
+      let result = String::from("abc");
+      result.as_str()
+  }
+  ```
+
+  ```rust
+  $ cargo run
+     Compiling chapter10 v0.1.0 (file:///projects/chapter10)
+  error[E0515]: cannot return reference to local variable `result`
+    --> src/main.rs:11:5
+     |
+  11 |     result.as_str()
+     |     ^^^^^^^^^^^^^^^ returns a reference to data owned by the current function
+  
+  For more information about this error, try `rustc --explain E0515`.
+  error: could not compile `chapter10` due to previous error
+  
+  ```
+
+  出现的问题是 `result` 在 `longest` 函数的结尾将离开作用域并被清理，而我们尝试从函数返回一个 `result` 的引用。无法指定生命周期参数来改变悬垂引用，而且 Rust 也不允许我们创建一个悬垂引用。在这种情况，最好的解决方案是返回一个有所有权的数据类型而不是一个引用，这样函数调用者就需要负责清理这个值了。
+
+#### 10.4.6 Struct定义中的生命周期标注
+
++ Struct中可包括
+
+  + 自持有的类型
+  + 引用：需要在每个引用上添加生命周期标注
+
+  ```rust
+  struct ImportantExcerpt<'a> {
+      part: &'a str,
+  }
+  
+  let novel = String::from("Call me Ishmael. Some years age ...");
+  
+  let first_sentence = novel.split('.').next().expect("Could not find a '.'");
+  
+  let i = ImportantExcerpt {
+      part: first_sentence
+  };
+  ```
+
+#### 10.4.7 生命周期的省略（Lifetime Elision）
+
++ 每个引用都有生命周期
+
++ 需要为使用生命周期的函数或struct指定生命周期参数
+
+  ```rust
+  fn first_word(s: &str) -> &str {
+      let bytes = s.as_bytes();
+  
+      for (i, &item) in bytes.iter().enumerate() {
+          if item == b' ' {
+              return &s[0..i];
+          }
+      }
+  
+      &s[..]
+  }
+  ```
+
+  这个函数没有生命周期注解却能编译是由于一些历史原因：在早期版本（pre-1.0）的 Rust 中，这的确是不能编译的。每一个引用都必须有明确的生命周期。那时的函数签名将会写成这样：
+
+  ```rust
+  fn first_word<'a>(s: &'a str) -> &'a str {
+  ```
+
+  在编写了很多 Rust 代码后，Rust 团队发现在特定情况下 Rust 程序员们总是重复地编写一模一样的生命周期注解。这些场景是可预测的并且遵循几个明确的模式。接着 Rust 团队就把这些模式编码进了 Rust 编译器中，如此借用检查器在这些情况下就能推断出生命周期而不再强制程序员显式的增加注解。
+
++ **生命周期省略规则（*lifetime elision rules*）**
+
+  + 在Rust引用分析中所编入的模式称为**生命周期省略规则**
+    + 这些规则无需开发者来遵守
+    + 它们是一些特殊情况，由编译器来考虑
+    + 如果你的代码符合这些情况，那么就无需显式标注生命周期
+  + 生命周期省略规则不会提供完整的推断
+    + 如果应用规则后，引用的生命周期仍然模糊不清 --> 编译错误
+    + 解决办法：添加生命周期标注，表明引用间的相互关系
+
++ **输入、输出生命周期（input / output lifetimes）**
+
+  + 函数 / 方法的参数：输入生命周期
+  + 函数 / 方法的返回值：输出生命周期
+
++ **生命周期省略的三个规则**
+
+  + 编译器使用3个规则在没有显式标注生命周期的情况下，来确定引用的生命周期
+
+    + 规则1应用于输入生命周期
+    + 规则2、3应用于输出生命周期
+    + 如果编译器应用完3个规则之后，仍然有无法确定生命周期的引用 --> 报错
+    + 这些规则适用于`fn`定义和`impl`块
+
+  + 规则
+
+    + 规则1：每个引用类型的参数都有自己的生命周期
+    + 规则2：如果只有1个输入生命周期参数，那么该生命周期被赋给所有的输出生命周期参数
+    + 规则3：如果有多个输入生命周期参数，但其中一个是`&self`或`&mut self`（是方法），那么`self`的生命周期会被赋给所有的输出生命周期参数
+
+  + 例子：假设我们自己就是编译器。并应用这些规则来计算
+
+    +  `first_word` 函数签名中的引用的生命周期。开始时签名中的引用并没有关联任何生命周期：
+
+      ```rust
+      fn first_word(s: &str) -> &str {
+      ```
+
+      接着编译器应用第一条规则，也就是每个引用参数都有其自己的生命周期。我们像往常一样称之为 `'a`，所以现在签名看起来像这样：
+
+      ```rust
+      fn first_word<'a>(s: &'a str) -> &str {
+      ```
+
+      对于第二条规则，因为这里正好只有一个输入生命周期参数所以是适用的。第二条规则表明输入参数的生命周期将被赋予输出生命周期参数，所以现在签名看起来像这样：
+
+      ```rust
+      fn first_word<'a>(s: &'a str) -> &'a str {
+      ```
+
+      现在这个函数签名中的所有引用都有了生命周期，如此编译器可以继续它的分析而无须程序员标记这个函数签名中的生命周期。
+
+    + 这次从没有生命周期参数的`longest`函数开始
+
+      ```rust
+      fn longest(x: &str, y: &str) -> &str {
+      ```
+
+      再次假设我们自己就是编译器并应用第一条规则：每个引用参数都有其自己的生命周期。这次有两个参数，所以就有两个（不同的）生命周期：
+
+      ```rust
+      fn longest<'a, 'b>(x: &'a str, y: &'b str) -> &str {
+      ```
+
+      再来应用第二条规则，因为函数存在多个输入生命周期，它并不适用于这种情况。再来看第三条规则，它同样也不适用，这是因为没有 `self` 参数。应用了三个规则之后编译器还没有计算出返回值类型的生命周期。这就是为什么在编译代码时会出现错误的原因：编译器使用所有已知的生命周期省略规则，仍不能计算出签名中所有引用的生命周期。
+
+      因为第三条规则真正能够适用的就只有方法签名，现在就让我们看看那种情况中的生命周期，并看看为什么这条规则意味着我们经常不需要在方法签名中标注生命周期。
+
+#### 10.4.8 方法定义中的生命周期标注
+
++ 在`struct`上使用生命周期实现方法，语法和泛型参数的语法一样
+
++ 在哪声明和使用生命周期参数，依赖于
+
+  + 生命周期参数是否和字段、方法的参数或返回值有关
+
++ `struct`字段的生命周期名
+
+  + 在`impl`后声明
+  + 在`struct`名后使用
+  + 这些生命周期是`struct`类型的一部分
+
++ `impl`块内的方法签名中
+
+  + 引用可能绑定于`struct`字段引用的生命周期，也可能是独立的
+  + 生命周期省略规则经常使得方法中的生命周期标注不是必须的
+
+  ```rust
+  struct ImportantExcerpt<'a> {
+      part: &'a str,
+  }
+  
+  impl<'a> ImportantExcerpt<'a> {
+      fn level(&self) -> i32 {
+          3
+      }
+  }
+  
+  impl<'a> ImportantExcerpt<'a> {
+      fn announce_and_return_part(&self, announcement: &str) -> &str {
+          println!("Attention please: {}", announcement);
+          self.part
+      }
+  }
+  ```
+
+  首先，这里有一个方法 `level`。其唯一的参数是 `self` 的引用，而且返回值只是一个 `i32`，并不引用任何值。
+
+  `impl` 之后和类型名称之后的生命周期参数是必要的，不过因为第一条生命周期规则我们并不必须标注 `self` 引用的生命周期。而`announce_and_return_part`有两个输入生命周期，所以 Rust 应用第一条生命周期省略规则并给予 `&self` 和 `announcement` 他们各自的生命周期。接着，因为其中一个参数是 `&self`，返回值类型被赋予了 `&self` 的生命周期，这样所有的生命周期都被计算出来了。
+
+#### 10.4.9 静态生命周期
+
++ `static`是一个特殊的生命周期：整个程序的持续时间
+  + 例如：所有的字符串字面值都拥有`static`生命周期（因为它被直接存储在程序的二进制文件中，而这个文件总是可用的）
+    + `let s: &'static str = "I have a static lifetime.";`
++ 为引用指定`static`生命周期前要三思
+  + 是否需要引用在程序整个生命周期内都存活
+
+#### 10.4.10 结合泛型类型参数、trait bounds和生命周期
+
+```rust
+use std::fmt::Display;
+
+fn longest_with_an_announcement<'a, T>(
+    x: &'a str,
+    y: &'a str,
+    ann: T,
+) -> &'a str
+where
+    T: Display,
+{
+    println!("Announcement! {}", ann);
+    if x.len() > y.len() {
+        x
+    } else {
+        y
+    }
+}
+```
+
+这个是之前示例中返回两个字符串 slice 中较长者的 `longest` 函数，不过带有一个额外的参数 `ann`。`ann` 的类型是泛型 `T`，它可以被放入任何实现了 `where` 从句中指定的 `Display` trait 的类型。这个额外的参数会使用 `{}` 打印，这也就是为什么 `Display` trait bound 是必须的。因为生命周期也是泛型，所以生命周期参数 `'a` 和泛型类型参数 `T` 都位于函数名后的同一尖括号列表中。
+
+
+
+## 11、编写自动化测试
+
++ 测试
+  + 函数
+  + 验证非测试代码的功能是否和预期一致
++ 测试函数体（通常）执行的3个操作
+  + 准备（Arrange）数据 / 状态
+  + 运行（Act）被测试的代码
+  + 断言（Assert）结果
+
+### 11.1 如何编写测试
+
+#### 11.1.1 解剖测试函数
+
++ 测试函数需要使用`test`属性（attribute）进行标注
+
+  + `Attribute`就是一段Rust代码的元数据
+  + 在函数上加`#[test]`，可把函数变成测试函数
+
++ 使用`cargo test`命令运行所有测试函数
+
+  + Rust会构建一个`Test Runner`可执行文件
+    + 它会运行标注了`test`的函数，并报告其运行是否成功
+
++ 当使用`cargo`创建`library`项目的时候，会生成一个`test module`，里面有一个`test`函数
+
+  + 你可以添加任意数量的`test module`或函数
+
+  ```rust
+  pub fn add(left: usize, right: usize) -> usize {
+      left + right
+  }
+  
+  #[cfg(test)]
+  mod tests {
+      use super::*;
+  
+      #[test]
+      fn it_works() {
+          let result = add(2, 2);
+          assert_eq!(result, 4);
+      }
+  }
+  ```
+
+  ```rust
+  ➜  test_demo_lib git:(main) ✗ ct   
+     Compiling test_demo_lib v0.1.0 (/home/urain/learning/BackEnd/Rust/Code/test_demo_lib)
+      Finished test [unoptimized + debuginfo] target(s) in 0.45s
+       Running unittests src/lib.rs (target/debug/deps/test_demo_lib-8ab6a173bdd46810)
+  
+  running 1 test
+  test tests::it_works ... ok
+  
+  test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+  
+     Doc-tests test_demo_lib
+  
+  running 0 tests
+  
+  test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+  ```
+
++ 测试失败
+
+  + 测试函数`panic`就表示失败
+  + 每个测试都运行在一个新线程中
+  + 当主线程观察到某个测试线程挂掉了，那个测试就会被标记为失败
+
+  ```rust
+  pub fn add(left: usize, right: usize) -> usize {
+      left + right
+  }
+  
+  #[cfg(test)]
+  mod tests {
+      use super::*;
+  
+      #[test]
+      fn it_works() {
+          let result = add(2, 2);
+          assert_eq!(result, 4);
+      }
+  
+      #[test]
+      fn another() {
+          panic!("Make this test fail");
+      }
+  
+  }
+  ```
+
+  ```rust
+  test_demo_lib git:(main) ✗ ct
+     Compiling test_demo_lib v0.1.0 (/home/urain/learning/BackEnd/Rust/Code/test_demo_lib)
+      Finished test [unoptimized + debuginfo] target(s) in 0.44s
+       Running unittests src/lib.rs (target/debug/deps/test_demo_lib-8ab6a173bdd46810)
+  
+  running 2 tests
+  test tests::it_works ... ok
+  test tests::another ... FAILED
+  
+  failures:
+  
+  ---- tests::another stdout ----
+  thread 'tests::another' panicked at 'Make this test fail', src/lib.rs:25:9
+  note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+  
+  
+  failures:
+      tests::another
+  
+  test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+  
+  error: test failed, to rerun pass `--lib`
+  ```
+
+#### 11.1.2 断言（Assert）
+
++ 使用 assert! 宏检查测试结果
+
+  + `assert!`宏，来自标准库，用来确定某个状态是否为`true`
+
+    + `true`：测试通过
+    + `false`：调用`panic!`，测试失败
+
+    ```rust
+    #[derive(Debug)]
+    struct Rectangle {
+        width: u32,
+        height: u32,
+    }
+    
+    impl Rectangle {
+        fn can_hold(&self, other: &Rectangle) -> bool {
+            self.width > other.width && self.height > other.height
+        }
+    }
+    
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+    
+        #[test]
+        fn larger_can_hold_smaller() {
+            let larger = Rectangle {
+                width: 8,
+                height: 7,
+            };
+            let smaller = Rectangle {
+                width: 5,
+                height: 1,
+            };
+    
+            assert!(larger.can_hold(&smaller));
+        }
+    }
+    ```
+
+#### 11.1.3 使用 assert_eq! 和 assert_ne! 测试相等性
+
++ 都来自标准库
+
++ 判断两个参数是佛 **相等** 或 **不等**
+
++ 实际上，它们使用的就是`==`和`!=`运算符
+
++ 断言失败：自动打印出两个参数的值
+
+  + 使用`debug`格式打印参数
+    + 要求参数实现了`partialEq`和`Debug Traits`（所有的基本类型和标准库里的大部分类型都实现了）
+
+  ```rust
+  pub fn add_two(a: i32) -> i32 {
+      a + 3
+  }
+  
+  #[cfg(test)]
+  mod tests {
+      use super::*;
+  
+      #[test]
+      fn it_adds_two() {
+          assert_eq!(4, add_two(2));
+      }
+  }
+  ```
+
+  ```rust
+  test_demo_lib git:(main) ✗ ct                  
+     Compiling test_demo_lib v0.1.0 (/home/urain/learning/BackEnd/Rust/Code/test_demo_lib)
+      Finished test [unoptimized + debuginfo] target(s) in 0.54s
+       Running unittests src/lib.rs (target/debug/deps/test_demo_lib-8ab6a173bdd46810)
+  
+  running 1 test
+  test tests::it_adds_two ... FAILED
+  
+  failures:
+  
+  ---- tests::it_adds_two stdout ----
+  thread 'tests::it_adds_two' panicked at 'assertion failed: `(left == right)`
+    left: `4`,
+   right: `5`', src/lib.rs:76:9
+  note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+  
+  
+  failures:
+      tests::it_adds_two
+  
+  test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+  
+  error: test failed, to rerun pass `--lib`
+  ```
+
+#### 11.1.4 自定义错误信息
+
++ 添加自定义错误信息
+
+  + 可以向`assert!`、`assert_eq!`、`assert_ne!`添加可选的自定义信息
+
+    + 这些自定义信息和失败信息都会打印出来
+    + `assert!`：第一个参数必填，自定义信息作为第二个参数
+    + `assert_eq!`和`assert_ne!`：前两个参数必填，自定义信息作为第三个参数
+    + 自定义消息参数会被传递给`format!`宏，可以使用`{}`占位符
+
+    ```rust
+    pub fn greeting(name: &str) -> String {
+        format!("Hello {}!", name)
+    }
+    
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+    
+        #[test]
+        fn greeting_contains_name() {
+            let result = greeting("Carol");
+            assert!(result.contains("Carol"));
+        }
+    }
+    ```
+
+    这个程序的需求还没有被确定，因此问候文本开头的 `Hello` 文本很可能会改变。然而我们并不想在需求改变时不得不更新测试，所以相比检查 `greeting` 函数返回的确切值，我们将仅仅断言输出的文本中包含输入参数。
+
+    让我们通过将 `greeting` 改为不包含 `name` 来在代码中引入一个 bug 来测试失败时是怎样的：
+
+    ```rust
+    pub fn greeting(name: &str) -> String {
+        String::from("Hello!")
+    }
+    ```
+
+    ```rust
+    $ cargo test
+       Compiling greeter v0.1.0 (file:///projects/greeter)
+        Finished test [unoptimized + debuginfo] target(s) in 0.91s
+         Running unittests src/lib.rs (target/debug/deps/greeter-170b942eb5bf5e3a)
+    
+    running 1 test
+    test tests::greeting_contains_name ... FAILED
+    
+    failures:
+    
+    ---- tests::greeting_contains_name stdout ----
+    thread 'main' panicked at 'assertion failed: result.contains(\"Carol\")', src/lib.rs:12:9
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+    
+    
+    failures:
+        tests::greeting_contains_name
+    
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+    
+    error: test failed, to rerun pass `--lib`
+    ```
+
+    结果仅仅告诉了我们断言失败了和失败的行号。一个更有用的失败信息应该打印出 `greeting` 函数的值。让我们为测试函数增加一个自定义失败信息参数：带占位符的格式字符串，以及 `greeting` 函数的值：
+
+    ```rust
+    #[test]
+    fn greeting_contains_name() {
+        let result = greeting("Carol");
+        assert!(
+            result.contains("Carol"),
+            "Greeting did not contain name, value was `{}`",
+            result
+        );
+    }
+    ```
+
+    现在如果再次运行测试，将会看到更有价值的信息：
+
+    ```rust
+    $ cargo test
+       Compiling greeter v0.1.0 (file:///projects/greeter)
+        Finished test [unoptimized + debuginfo] target(s) in 0.93s
+         Running unittests src/lib.rs (target/debug/deps/greeter-170b942eb5bf5e3a)
+    
+    running 1 test
+    test tests::greeting_contains_name ... FAILED
+    
+    failures:
+    
+    ---- tests::greeting_contains_name stdout ----
+    thread 'main' panicked at 'Greeting did not contain name, value was `Hello!`', src/lib.rs:12:9
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+    
+    
+    failures:
+        tests::greeting_contains_name
+    
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+    
+    error: test failed, to rerun pass `--lib`
+    ```
+
+    可以在测试输出中看到所取得的确切的值，这会帮助我们理解真正发生了什么，而不是期望发生什么。
+
+#### 11.1.5 用 should_panic 检查 panic
+
++ 验证错误处理的情况
+
+  + 测试除了验证代码的返回值是否正确，还需验证代码是否如预期的处理了发生错误的情况
+
+  + 可验证代码在特定情况下是否发生了`panic`
+
+  + `should_panic`属性（attribute）
+
+    + 函数`panic`：测试通过
+    + 函数没有`panic`：测试失败
+
+    ```rust
+    pub struct Guess {
+        value: i32,
+    }
+    
+    impl Guess {
+        pub fn new(value: i32) -> Guess {
+            if value < 1 || value > 100 {
+                panic!("Guess value must be between 1 and 100, got {}.", value);
+            }
+    
+            Guess { value }
+        }
+    }
+    
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+    
+        #[test]
+        #[should_panic]
+        fn greater_than_100() {
+            Guess::new(200);
+        }
+    }
+    ```
+
+    测试通过
+
+    ```rust
+    // --snip--
+    impl Guess {
+        pub fn new(value: i32) -> Guess {
+            if value < 1 {
+                panic!("Guess value must be between 1 and 100, got {}.", value);
+            }
+    
+            Guess { value }
+        }
+    }
+    ```
+
+    ```rust
+    $ cargo test
+       Compiling guessing_game v0.1.0 (file:///projects/guessing_game)
+        Finished test [unoptimized + debuginfo] target(s) in 0.62s
+         Running unittests src/lib.rs (target/debug/deps/guessing_game-57d70c3acb738f4d)
+    
+    running 1 test
+    test tests::greater_than_100 - should panic ... FAILED
+    
+    failures:
+    
+    ---- tests::greater_than_100 stdout ----
+    note: test did not panic as expected
+    
+    failures:
+        tests::greater_than_100
+    
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+    
+    error: test failed, to rerun pass `--lib`
+    ```
+
+    测试失败
+
++ 让 should_panic 更精确
+
+  + 为`should_panic`属性添加一个可选的`expected`参数
+
+    + 将检查失败信息中是否包含所指定的文字
+
+    ```rust
+    // --snip--
+    
+    impl Guess {
+        pub fn new(value: i32) -> Guess {
+            if value < 1 {
+                panic!(
+                    "Guess value must be greater than or equal to 1, got {}.",
+                    value
+                );
+            } else if value > 100 {
+                panic!(
+                    "Guess value must be less than or equal to 100, got {}.",
+                    value
+                );
+            }
+    
+            Guess { value }
+        }
+    }
+    
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+    
+        #[test]
+        #[should_panic(expected = "less than or equal to 100")]
+        fn greater_than_100() {
+            Guess::new(200);
+        }
+    }
+    ```
+
+#### 11.1.6 在测试中使用 Result<T, E>
+
++ 无需`panic`，可使用`Result<T, E>`作为返回类型编写测试
+
+  + 返回`Ok`：测试通过
+  + 返回`Err`：测试失败
+
+  ```rust
+  #[cfg(test)]
+  mod tests {
+      #[test]
+      fn it_works() -> Result<(), String> {
+          if 2 + 2 == 4 {
+              Ok(())
+          } else {
+              Err(String::from("two plus two does not equal four"))
+          }
+      }
+  }
+  ```
+
++ 不要在使用`Rsult<T, E>`编写的测试上标注`#[should_panic]`
+
+
+
+### 11.2 控制测试如何运行
+
++ 改变`cargo test`的行为：添加命令行参数
++ 默认行为
+  + 并行运行
+  + 所有测试
+  + 捕获（不显示）所有输出，使读取与测试结果相关的输出更容易
++ 命令行参数
+  + 针对`cargo test`的参数，紧跟`cargo test`后
+  + 针对测试可执行程序，放在` -- `之后
+
+#### 11.2.1 并行或连续的运行测试
+
++ 并行运行测试
+  + 运行多个测试：默认使用多个线程并行运行
+    + 运行快
+  + 确保测试之间
+    + 不会相互依赖
+    + 不依赖于某个共享状态（环境、工作目录、环境变量等等）
++ `test-threads`参数
+  + 传递给二进制文件
+  + 不想以并行方式运行测试，或想对线程数进行细粒度控制
+  + 可以使用`--test-threads`参数，后边跟着线程的数量
+  + 例如：`cargo test -- --test-threads=1`
+
+#### 11.2.2 显式函数输出
+
++ 默认，如测试通过，Rust的`test`库会捕获所有打印到标准输出的内容
+
++ 例如，如果被测试代码中用到了`println!`
+
+  + 如果测试通过：不会在终端看到`println!`打印的内容
+  + 如果测试失败：会看到`println!`打印的内容和失败信息
+
+  ```rust
+  fn prints_and_returns_10(a: i32) -> i32 {
+      println!("I got the value {}", a);
+      10
+  }
+  
+  #[cfg(test)]
+  mod tests {
+      use super::*;
+  
+      #[test]
+      fn this_test_will_pass() {
+          let value = prints_and_returns_10(4);
+          assert_eq!(10, value);
+      }
+  
+      #[test]
+      fn this_test_will_fail() {
+          let value = prints_and_returns_10(8);
+          assert_eq!(5, value);
+      }
+  }
+  ```
+
++ 如果想在成功的测试中看到打印的内容：`--show-output`
+
+  ```rust
+  test_demo_lib git:(main) ✗ ct -- --show-output
+  warning: function `prints_and_returns_10` is never used
+     --> src/lib.rs:162:4
+      |
+  162 | fn prints_and_returns_10(a: i32) -> i32 {
+      |    ^^^^^^^^^^^^^^^^^^^^^
+      |
+      = note: `#[warn(dead_code)]` on by default
+  
+  warning: `test_demo_lib` (lib) generated 1 warning
+      Finished test [unoptimized + debuginfo] target(s) in 0.01s
+       Running unittests src/lib.rs (target/debug/deps/test_demo_lib-8ab6a173bdd46810)
+  
+  running 2 tests
+  test tests::this_test_will_pass ... ok
+  test tests::this_test_will_fail ... FAILED
+  
+  successes:
+  
+  ---- tests::this_test_will_pass stdout ----
+  I got the value 4
+  
+  
+  successes:
+      tests::this_test_will_pass
+  
+  failures:
+  
+  ---- tests::this_test_will_fail stdout ----
+  I got the value 8
+  thread 'tests::this_test_will_fail' panicked at 'assertion failed: `(left == right)`
+    left: `5`,
+   right: `10`', src/lib.rs:180:9
+  note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+  
+  
+  failures:
+      tests::this_test_will_fail
+  
+  test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+  
+  error: test failed, to rerun pass `--lib`
+  ```
+
+#### 11.2.3 通过指定名称来运行部分测试
+
++ 按名称运行测试的子集
+
+  ```rust
+  pub fn add_two(a: i32) -> i32 {
+      a + 2
+  }
+  
+  #[cfg(test)]
+  mod tests {
+      use super::*;
+  
+      #[test]
+      fn add_two_and_two() {
+          assert_eq!(4, add_two(2));
+      }
+  
+      #[test]
+      fn add_three_and_two() {
+          assert_eq!(5, add_two(3));
+      }
+  
+      #[test]
+      fn one_hundred() {
+          assert_eq!(102, add_two(100));
+      }
+  }
+  ```
+
+  
+
++ 选择运行的测试：将测试的名称（一个或多个）作为`cargo test`的参数
+
+  + 运行单个测试：指定测试名
+
+    ```rust
+    cargo test add_three_and_two
+    ```
+
+  + 运行多个测试：指定测试名的一部分（模块名也可以）
+
+    ```rust
+    cargo test add
+    ```
+
+#### 11.2.4 忽略某些测试
+
++ `ignore`属性（attribute）
+
+  ```rust
+  #[test]
+  fn it_works() {
+      assert_eq!(2 + 2, 4);
+  }
+  
+  #[test]
+  #[ignore]
+  fn expensive_test() {
+      // 需要运行一个小时的代码
+  }
+  ```
+
++ 运行被忽略（ignore）的测试
+
+  + `cargo test -- --ignored`
+
+
+
+### 11.3 测试的组织结构
+
+#### 11.3.1 测试的分类
+
++ Rust对测试的分类
+  + 单元测试
+  + 集成测试
++ 单元测试
+  + 小、专注
+  + 一次对一个模块进行隔离的测试
+  + 可测试`prvate`接口
++ 集成测试
+  + 在库外部。和其它外部代码一样使用你的代码
+  + 只能使用`public`接口
+  + 可能在每个测试中使用到多个模块
+
+#### 11.3.2 单元测试
+
+单元测试的目的是在与其他部分隔离的环境中测试每一个单元的代码，以便于快速而准确的某个单元的代码功能是否符合预期。单元测试与他们要测试的代码共同存放在位于 *src* 目录下相同的文件中。规范是在每个文件中创建包含测试函数的 `tests` 模块，并使用 `cfg(test)` 标注模块。
+
++ `#[cfg(test)]`标注
+
+  + `tests`模块上的`#[cfg(test)]`标注
+
+    + 只有运行`cargo test`才编译和运行代码
+    + 运行`cargo build`则不会
+
+  + 集成测试在不同的目录，它不需要`#[cfg(test)]`标注
+
+  + `cfg`：configuration（配置）
+
+    + 告诉Rust下面的条目只有在指定的配置选项下才被包含
+    + 配置选项`test`：有Rust提供，用来编译和运行测试
+      + 只有`cargo test`才会编译代码，包括**模块中**的`helper`函数和`#[test]`标注的函数
+
+    ```rust
+    #[cfg(test)]
+    mod tests {
+        #[test]
+        fn it_works() {
+            let result = 2 + 2;
+            assert_eq!(result, 4);
+        }
+    }
+    ```
+
+    上述代码就是自动生成的测试模块。`cfg` 属性代表 *configuration* ，它告诉 Rust 其之后的项只应该被包含进特定配置选项中。在这个例子中，配置选项是 `test`，即 Rust 所提供的用于编译和运行测试的配置选项。通过使用 `cfg` 属性，Cargo 只会在我们主动使用 `cargo test` 运行测试时才编译测试代码。这包括测试模块中可能存在的帮助函数，以及标注为 #[test] 的函数。
+
++ 测试私有函数
+
+  + Rust允许测试私有函数
+
+    ```rust
+    pub fn add_two(a: i32) -> i32 {
+        internal_adder(a, 2)
+    }
+    
+    fn internal_adder(a: i32, b: i32) -> i32 {
+        a + b
+    }
+    
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+    
+        #[test]
+        fn internal() {
+            assert_eq!(4, internal_adder(2, 2));
+        }
+    }
+    ```
+
+#### 11.3.3 集成测试
+
+在 Rust 中，集成测试对于你需要测试的库来说完全是外部的。同其他使用库的代码一样使用库文件，也就是说它们只能调用一部分库中的公有 API。集成测试的目的是测试库的多个部分能否一起正常工作。一些单独能正确运行的代码单元集成在一起也可能会出现问题，所以集成测试的覆盖率也是很重要的。为了创建集成测试，你需要先创建一个 *tests* 目录。
+
++ tests目录
+
+  + 创建集成测试：`tests`目录
+
+  + `tests`目录下的每个测试文件都是单独的一个`crate`
+
+    + 需要将被测试库导入
+
+  + 无需标注`#[cfg(test)]`，`tests`目录被特殊对待
+
+    + 只要`cargo test`，才会编译`tests`目录下的文件
+
+    ```rust
+    use test_demo_lib;
+    #[test]
+    fn it_adds_two() {
+        assert_eq!(4, test_demo_lib::add_two(2));
+    }
+    ```
+
++ 运行指定的集成测试
+
+  + 运行一个特定的集成测试：`cargo test 函数名`
+
+  + 运行某个测试文件内所有测试：`cargo test --test 文件名`
+
+    ```rust
+    ct --test integration_tests
+        Finished test [unoptimized + debuginfo] target(s) in 0.01s
+         Running tests/integration_tests.rs (target/debug/deps/integration_tests-632d5c3c055e343d)
+    
+    running 1 test
+    test it_adds_two ... ok
+    
+    test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+    ```
+
++ 集成测试中的子模块
+
+  + `tests`目录下的每个文件被编译成单独的`crate`
+    + 这些文件不共享行为（与src下的文件规则不同）
+
++ 针对`binary crate`的集成测试
+
+  + 如果项目是`binary crate`，只含有`src/main.rs`，没有`src/lib.rs`
+    + 不能在`tests`目录下创建集成测试
+    + 无法把`main.rs`的函数导入作用域
+  + 只要`library crate`才能暴露函数给其它`crate`使用
+  + `binary crate`意味着独立运行
+
+
+
+## 12、一个 I/O 项目：构建一个命令行程序
+
+### 12.1 接受命令行参数
+
+```rust
+use std::env; //collect
+
+fn main() {
+    let args: Vec<String> = env::args().collect();
+    println!("{:?}", args);
+    let query = &args[1];
+    let filename = &args[2];
+    println!("Search for  {}", query);
+    println!("In file {}", filename);
+}
+```
+
+### 12.2 读取文件
+
+```rust
+use std::env; //collect
+use std::fs;
+
+fn main() {
+    let args: Vec<String> = env::args().collect();
+    let query = &args[1];
+    let filename = &args[2];
+
+    println!("Search for  {}", query);
+    println!("In file {}", filename);
+
+    let contents = fs::read_to_string(filename).expect("Something went wrong reading the file");
+    println!("With text: \n{}", contents);
+}
+```
+
+### 12.3 重构改进模块性和错误处理
+
+#### 12.3.1 二进制程序关注点分离的指导性原则
+
++ 将程序拆分为`main.rs`和`lib.rs`，将业务逻辑放入`lib.rs`
++ 当命令行解析逻辑较少时，将它放在`main.rs`也行
++ 当命令行解析逻辑变复杂时，需要将它从`main.rs`提取到`lib.rs`
+
+**经过上述拆分之后，留在`main`的功能有：**
+
++ 使用参数值调用命令行解析逻辑
++ 进行其它配置
++ 调用`lib.rs`中的`run`函数
++ 处理`run`函数可能出现的错误
+
+```rust
+use std::env; //collect
+use std::fs;
+
+fn main() {
+    let args: Vec<String> = env::args().collect();
+    
+    let config = Config::new(&args);
+
+    let contents = fs::read_to_string(config.filename).expect("Something went wrong reading the file");
+    println!("With text: \n{}", contents);
+}
+
+struct Config {
+    query: String, 
+    filename: String,
+}
+
+impl Config {
+    fn new(args: &[String]) -> Config { 
+        let query = args[1].clone();
+        let filename = args[2].clone();
+        Config { query, filename }
+    }
+}
+```
+
+#### 12.3.2 修复错误处理
+
+```rust
+use std::env; //collect
+use std::fs;
+use std::process;
+
+fn main() {
+    let args: Vec<String> = env::args().collect();
+    
+    let config = Config::new(&args).unwrap_or_else(|err| {
+        println!("Problem parsing arguments: {}", err);
+        process::exit(1);
+    });
+
+    let contents = fs::read_to_string(config.filename).expect("Something went wrong reading the file");
+    println!("With text: \n{}", contents);
+}
+
+struct Config {
+    query: String, 
+    filename: String,
+}
+
+impl Config {
+    fn new(args: &[String]) -> Result<Config, &'static str> { 
+        if args.len() < 3 {
+            return Err("not enough arguments");
+        }
+        let query = args[1].clone();
+        let filename = args[2].clone();
+        Ok(Config { query, filename })
+    }
+}
+```
+
+#### 12.3.3 从main提取逻辑
+
++ **main.rs**
+
+  ```rust
+  use std::env;
+  use std::process;
+  use minigrep::Config;
+  
+  
+  fn main() {
+      let args: Vec<String> = env::args().collect();
+      
+      let config = Config::new(&args).unwrap_or_else(|err| {
+          println!("Problem parsing arguments: {}", err);
+          process::exit(1);
+      });
+      if let Err(e) = minigrep::run(config) {
+          println!("Application error: {}", e);
+          process::exit(1);
+      }
+  }
+  ```
+
+  
+
++ **lib.rs**
+
+  ```rust
+  use std::fs;
+  use std::error::Error;
+  
+  pub fn run(config: Config) -> Result<(), Box<dyn Error>>{
+      let contents = fs::read_to_string(config.filename)?;
+      println!("With text: \n{}", contents);
+      Ok(())
+  }
+  
+  pub struct Config {
+      pub query: String, 
+      pub filename: String,
+  }
+  
+  impl Config {
+      pub fn new(args: &[String]) -> Result<Config, &'static str> { 
+          if args.len() < 3 {
+              return Err("not enough arguments");
+          }
+          let query = args[1].clone();
+          let filename = args[2].clone();
+          Ok(Config { query, filename })
+      }
+  }
+  ```
+
+  
+
+### 12.4 使用测试驱动开发（Test Driven Development，TDD）开发库功能
+
+1. 编写一个失败的测试，并运行它以确保它失败的原因是你所期望的。
+2. 编写或修改足够的代码来使新的测试通过。
+3. 重构刚刚增加或修改的代码，并确保测试仍然能通过。
+4. 从步骤 1 开始重复！
+
++ **lib.rs**
+
+  ```rust
+  use std::fs;
+  use std::error::Error;
+  
+  pub fn run(config: Config) -> Result<(), Box<dyn Error>>{
+      let contents = fs::read_to_string(config.filename)?;
+      for line in search(&config.query, &contents) {
+          println!("{}", line);
+      }
+      Ok(())
+  }
+  
+  pub struct Config {
+      pub query: String, 
+      pub filename: String,
+  }
+  
+  impl Config {
+      pub fn new(args: &[String]) -> Result<Config, &'static str> { 
+          if args.len() < 3 {
+              return Err("not enough arguments");
+          }
+          let query = args[1].clone();
+          let filename = args[2].clone();
+          Ok(Config { query, filename })
+      }
+  }
+  
+  pub fn search<'a>(query: &str, contents: &'a str) -> Vec<&'a str> {
+      let mut results = Vec::new();
+      for line in contents.lines() {
+          if line.contains(query) {
+              results.push(line);
+          }
+      }
+      results
+  }
+  
+  
+  #[cfg(test)]
+  mod tests {
+      use  super::*;
+  
+      #[test]
+      fn one_result() {
+          let query = "duct";
+          let contents = "\
+  Rust:
+  safe, fast, productive.
+  Pick three.";
+          assert_eq!(vec!["safe, fast, productive."], search(query, contents))
+      }
+  }
+  ```
+
+  
+
+### 12.5 使用环境变量
+
+我们将增加一个额外的功能来改进 `minigrep`：用户可以通过设置环境变量来设置搜索是否是大小写敏感的。当然，我们也可以将其设计为一个命令行参数并要求用户每次需要时都加上它，不过在这里我们将使用环境变量。这允许用户设置环境变量一次之后在整个终端会话中所有的搜索都将是大小写不敏感的。
+
++ **lib.rs**
+
+  ```rust
+  use std::fs;
+  use std::error::Error;
+  use std::env;
+  
+  pub fn run(config: Config) -> Result<(), Box<dyn Error>>{
+      let contents = fs::read_to_string(config.filename)?;
+      let results = if config.case_sensitive {
+          search(&config.query, &contents)
+      } else {
+          search_case_insensitive(&config.query, &contents)
+      };
+      for line in results {
+          println!("{}", line);
+      }
+      Ok(())
+  }
+  
+  pub struct Config {
+      pub query: String, 
+      pub filename: String,
+      pub case_sensitive: bool,
+  }
+  
+  impl Config {
+      pub fn new(args: &[String]) -> Result<Config, &'static str> { 
+          if args.len() < 3 {
+              return Err("not enough arguments");
+          }
+          let query = args[1].clone();
+          let filename = args[2].clone();
+          let case_sensitive = env::var("CASE_INSENSITIVE").is_err();
+          Ok(Config { query, filename, case_sensitive })
+      }
+  }
+  
+  pub fn search<'a>(query: &str, contents: &'a str) -> Vec<&'a str> {
+      let mut results = Vec::new();
+      for line in contents.lines() {
+          if line.contains(query) {
+              results.push(line);
+          }
+      }
+      results
+  }
+  
+  pub fn search_case_insensitive<'a>(query: &str, contents: &'a str) -> Vec<&'a str> {
+      let mut results = Vec::new();
+      let query = query.to_lowercase();
+      for line in contents.lines() {
+          if line.to_lowercase().contains(&query) {
+              results.push(line);
+          }
+      }
+      results
+  }
+  
+  
+  #[cfg(test)]
+  mod tests {
+      use  super::*;
+  
+      #[test]
+      fn case_sensitive() {
+          let query = "duct";
+          let contents = "\
+  Rust:
+  safe, fast, productive.
+  Pick three.
+  Duct tape.";
+          assert_eq!(vec!["safe, fast, productive."], search(query, contents))
+      }
+  
+      #[test]
+      fn case_insensitive() {
+          let query = "rUsT";
+          let contents = "\
+  Rust:
+  safe, fast, productive.
+  Pick three.
+  Trust me.";
+          assert_eq!(vec!["Rust:", "Trust me."], search_case_insensitive(query, contents))
+      }
+  }
+  ```
+
+
+
+### 12.6 将错误信息输出到标准错误而不是标准输出
+
++ 标准输出：`stdout`
+  + `println!`
++ 标准错误：`stderr`
+  + `eprin`
