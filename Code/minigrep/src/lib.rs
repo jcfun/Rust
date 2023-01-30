@@ -1,9 +1,9 @@
 /*
  * @Author: jc-fun urainstar@gmail.com
  * @Date: 2023-01-26 10:42:04
- * @LastEditors: jc-fun urainstar@gmail.com
- * @LastEditTime: 2023-01-27 20:34:33
- * @FilePath: /minigrep/src/lib.rs
+ * @LastEditors: jcfun urainstar@gmail.com
+ * @LastEditTime: 2023-01-30 23:38:25
+ * @FilePath: \minigrep\src\lib.rs
  * @Description: 
  */
 use std::fs;
@@ -65,7 +65,7 @@ pub fn search_case_insensitive<'a>(query: &str, contents: &'a str) -> Vec<&'a st
 
 #[cfg(test)]
 mod tests {
-    use  super::*;
+    use super::*;
 
     #[test]
     fn case_sensitive() {

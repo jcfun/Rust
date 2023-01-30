@@ -2712,6 +2712,13 @@ error: could not compile `path_demo` due to 2 previous errors
 + 模块定义时，如果模块名后边是`;`，而不是代码块
   + Rust会从与模块同名的文件中加载内容
   + 模块树的结构不会发生变化
+  
+  ```rust
+  pub mod hosting;
+  ```
+  
+  
+  
 + 随着模块逐渐变大，该技术让你可以把模块的内容移动到其它文件中
 
 
@@ -5727,4 +5734,7 @@ impl Config {
   }
   ```
   
-  
+
+
+
+##
