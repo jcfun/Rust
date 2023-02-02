@@ -5705,7 +5705,7 @@ impl Config {
   + `println!`
   
 + 标准错误：`stderr`
-  + `eprintl`
+  + `eprintln!`
   
   ```rust
   use std::env;
@@ -5734,7 +5734,284 @@ impl Config {
 
 ### 13.1 闭包（*closures*）：可以捕获环境的匿名函数
 
-Rust 的 **闭包**（*closures*）是可以保存在一个变量中或作为参数传递给其他函数的匿名函数。可以在一个地方创建闭包，然后在不同的上下文中执行闭包运算。不同于函数，闭包允许捕获被定义时所在作用域中的值
+Rust 的 **闭包**（*closures*）是可以保存在一个变量中或作为参数传递给其他函数的匿名函数。可以在一个地方创建闭包，然后在不同的上下文中执行闭包运算。不同于函数，闭包允许捕获被定义时所在作用域中的值。
+
+#### 13.1.1 使用闭包来创建抽象化的程序行为
+
+**例子：生成自定义运动计划的程序**
+
+假设有这样一个场景：我们身处的初创公司正在开发一个为用户提供健身计划的应用。使用Rust编写的后端程序在生成计划的过程中需要考虑到年龄、身体质量指数（BMI）、健身偏好、运动历史、指定强度值等因素。具体的算法究竟长什么样子在这个例子中并不重要，重要的是这个计算过程会消耗掉数秒钟时间。我们希望只在必要的时候调用算法，并且只调用一次，以免让用户等待过久。
+
++ 算法的逻辑并不是重点，重点是算法中的计算过程需要几秒种时间
+
++ 目标：不让用户发生不必要的等待
+
+  + 仅在必要时调用该算法
+  + 只调用一次
+
++ **main.rs**
+
+  ```rust
+  use std::thread;
+  use std::time::Duration;
+  
+  fn main() {
+      let simulated_user_specified_value = 10;
+      let simulated_random_number = 7;
+      generate_workout(simulated_user_specified_value, simulated_random_number)
+  }
+  
+  // fn simulated_expensive_calculation(intensity: u32) -> u32 {
+  //     println!("calculating slowly ...");
+  //     thread::sleep(Duration::from_secs(2));
+  //     intensity
+  // }
+  
+  fn generate_workout(intensity: u32, random_number: u32) {
+      let expensive_closure = |num| {
+          println!("calculating slowly ...");
+          thread::sleep(Duration::from_secs(2));
+          num
+      };
+  
+      // let expensive_result = simulated_expensive_calculation(intensity);
+      if intensity < 25 {
+          println!("Today, do {} pushups!", expensive_closure(intensity));
+          println!("Next, do {} situps!", expensive_closure(intensity));
+      } else {
+          if random_number == 3 {
+              println!("Take a break today! Remember to stay hydrated!");
+          } else {
+              println!("Today, run for {} minutes!", expensive_closure(intensity));
+          }
+      }
+  }
+  ```
+
+#### 13.1.2 闭包类型推断和注解
+
++ 闭包不要求标注参数和返回值的类型
++ 闭包通常很短小，只在狭小的上下文中工作，编译器通常能推断出类型
++ 可以手动添加类型标注
+
+  + `let expensive_closure = |num: u32| -> u32 {}`
+
+##### 函数闭包的定义语法
+
+```rust
+fn  add_one_v1   (x: u32) -> u32 { x + 1 }
+let add_one_v2 = |x: u32| -> u32 { x + 1 };
+let add_one_v3 = |x|             { x + 1 };
+let add_one_v4 = |x|               x + 1  ;
+```
+
+注意：闭包的定义最终只会为参数 / 返回值推断出唯一具体的类型
+
+```rust
+let example_closure = |x| x;
+
+let s = example_closure(String::from("hello"));
+let n = example_closure(5);
+```
+
+```rust
+$ cargo run
+   Compiling closure-example v0.1.0 (file:///projects/closure-example)
+error[E0308]: mismatched types
+ --> src/main.rs:5:29
+  |
+5 |     let n = example_closure(5);
+  |             --------------- ^- help: try using a conversion method: `.to_string()`
+  |             |               |
+  |             |               expected struct `String`, found integer
+  |             arguments to this function are incorrect
+  |
+note: closure parameter defined here
+ --> src/main.rs:2:28
+  |
+2 |     let example_closure = |x| x;
+  |                            ^
+
+For more information about this error, try `rustc --explain E0308`.
+error: could not compile `closure-example` due to previous error
+```
+
+第一次使用 `String` 值调用 `example_closure` 时，编译器推断这个闭包中 `x` 的类型以及返回值的类型是 `String`。接着这些类型被锁定进闭包 `example_closure` 中，如果尝试对同一闭包使用不同类型则就会得到类型错误。
+
+#### 13.1.3 使用泛型参数和 fn trait 来存储闭包
+
++ 另一中解决方案
++ 创建一个`struct`，它持有闭包及其调用结果
+  + 只会在需要结果时才执行该闭包
+  + 可缓存结果
++ 这种模式一般称作记忆化（memoization）或 延迟计算 / 惰性求值（lazy evaluation）
+
+##### 如何让struct持有闭包
+
++ `struct`的定义需要知道所有字段的类型
+  + 需要指明闭包的类型
++ 每个闭包实例都有自己唯一的匿名类型，即使两个闭包签名完全一样
++ 所以需要使用：泛型和`Trait Bound`
+
+##### Fn Trait
+
++ `Fn traits`由标准库提供
++ 所有的闭包都至少实现了以下`trait`之一
+  + `Fn`
+  + `FnMut`
+  + `FnOnce`
+
+##### 解决运动计划例子中的问题
+
+代码依然不必要地多次调用了耗时的计算闭包。这个问题的一个解决方案是将耗时闭包的结果存储至变量中，并在随后需要结果的地方使用该变量而不是继续调用闭包。但需要注意的是，这种方法可能会造成大量的代码重复。
+
+```rust
+use std::thread;
+use std::time::Duration;
+
+struct Cacher<T>
+where
+    T: Fn(u32) -> u32,
+{
+    calculation: T,
+    value: Option<u32>,
+}
+
+impl<T> Cacher<T>
+where
+    T: Fn(u32) -> u32,
+{
+    fn new(calculation: T) -> Cacher<T> {
+        Cacher {
+            calculation,
+            value: None,
+        }
+    }
+
+    fn value(&mut self, arg: u32) -> u32 {
+        match self.value {
+            Some(v) => v,
+            None => {
+                let v = (self.calculation)(arg);
+                self.value = Some(v);
+                v
+            }
+        }
+    }
+}
+
+fn main() {
+    let simulated_user_specified_value = 10;
+    let simulated_random_number = 7;
+    generate_workout(simulated_user_specified_value, simulated_random_number)
+}
+
+fn generate_workout(intensity: u32, random_number: u32) {
+    let mut expensive_closure = Cacher::new(|num| {
+        println!("calculating slowly ...");
+        thread::sleep(Duration::from_secs(2));
+        num
+    });
+
+    if intensity < 25 {
+        println!("Today, do {} pushups!", expensive_closure.value(intensity));
+        println!("Next, do {} situps!", expensive_closure.value(intensity));
+    } else {
+        if random_number == 3 {
+            println!("Take a break today! Remember to stay hydrated!");
+        } else {
+            println!("Today, run for {} minutes!", expensive_closure.value(intensity));
+        }
+    }
+}
+```
+
+##### 使用缓存器（Cacher）实现的限制
+
++ Cacher实例假定针对不同的参数`arg`，`value`方法总会得到同样的值
+
+  ```rust
+  #[cfg(test)]
+  mod tests {
+      #[test]
+      fn call_with_different_values() {
+          let mut c = super::Cacher::new(|a| a);
+          let v1 = c.value(1);
+          let v2 = c.value(2);
+          assert_eq!(v2, 2);
+      }
+  }
+  ```
+
+  + 可以使用`HashMap`代替单个值
+    + key: arg参数
+    + value: 执行闭包的结果
+
++ 只能接受一个`u32`类型的参数和`u32`类型的返回值
+
+  + 尝试引入更多的泛型参数
+
+#### 13.1.4 使用闭包来捕获上下文环境
+
+##### 闭包会捕获其环境
+
++ 闭包可以访问定义它的作用域内的变量，而普通函数则不能
+
+  ```rust
+  fn main() {
+  
+      let x = 4;
+  
+      let equal_to_x = |z| z == x;
+  
+      fn equal_to_x(z: i32) -> bool {
+          z == x  // can't capture dynamic environment in a fn item
+      }
+  
+      let y = 4;
+  
+      assert!(equal_to_x(y));
+  
+  }
+  ```
+
++ 会产生内存开销
+
+##### 闭包从所在环境捕获值的方式
+
++ 与函数获得参数的三种方式一样
+  + 获得所有权：`FnOnce`
+  + 可变借用：`FnMut`
+  + 不可变借用：`Fn`
++ 创建闭包时，通过闭包对环境值的使用，Rust推断出具体使用哪个`trait`
+  + 所有的闭包都实现了`FnOnce`
+  + 没有移动捕获变量的实现了`FnMut`
+  + 无需可变访问捕获变量的闭包实现了`Fn`
+
+##### move关键字
+
++ 在参数列表前使用`move`关键字，可以强制闭包取得它所使用的环境值的所有权
+
+  + 当将闭包传递给新线程以移动数据使其归新线程所有时，此技术最为有用
+
+  ```rust
+  let x = vec![1, 2, 3];
+  let equal_to_x = move |z| z == x;
+  
+  println!("can't use x here: {:?}", x);
+  
+  let y = vec![1, 2, 3];
+  
+  assert!(equal_to_x(y))
+  ```
+
+##### 最佳实践
+
++ 当指定`Fn trait bound`之一时，首先用`Fn`，基于闭包体里的情况，如果需要`FnOnce`或`FnMut`，编译器会再告诉你
+
+### 13.2 迭代器
+
+
 
 
 
