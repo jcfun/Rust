@@ -6009,9 +6009,64 @@ fn generate_workout(intensity: u32, random_number: u32) {
 
 + 当指定`Fn trait bound`之一时，首先用`Fn`，基于闭包体里的情况，如果需要`FnOnce`或`FnMut`，编译器会再告诉你
 
-### 13.2 迭代器
+### 13.2 迭代器（iterator）
 
+迭代器模式允许你对一个序列的项进行某些处理。**迭代器**（*iterator*）负责遍历序列中的每一项和决定序列何时结束的逻辑。当使用迭代器时，我们无需重新实现这些逻辑。
 
+在 Rust 中，迭代器是 **惰性的**（*lazy*），这意味着在调用方法使用迭代器之前它都不会有效果。
 
+#### 13.2.1 什么是迭代器
 
++ 迭代器模式：对一系列项执行某些任务
+
++ 迭代器负责
+
+  +  遍历每个项
+  + 确定序列（遍历）何时完成
+
++ Rust的迭代器
+
+  + 惰性的（lazy）：除非调用消费迭代器的方法，否则迭代器本身没有任何效果
+
+    ```rust
+    let v1 = vec![1, 2, 3];
+    let v1_iter = v1.iter();
+    
+    for val in v1_iter {
+        println!("Got: {}", val);
+    }
+    ```
+
+#### 13.2.2 Iterator trait和next方法
+
+##### Iterator trait
+
++ 所有的迭代器都实现了`Iterator trait`标准库，定义大致如下：
+
+  ```rust
+  pub trait Iterator {
+      type Item;
+  
+      fn next(&mut self) -> Option<Self::Item>;
+  
+      // 这里省略了由Rust给出的默认实现方法
+  
+  }
+  ```
+
++ `type Item`和`Self::Item`定义了与该`trait`关联的类型
+
+  + 实现`Iterator trait`需要你定义一个`Item`类型，它用于`next`方法的返回的类型（迭代器的返回类型）
+
++ `Iterator trait`仅要求实现一个方法：`next`
+
++ `next`
+
+  + 每次返回迭代器中的一项
+  + 返回结果包裹在`Some`里
+  + 迭代结束，返回`None`
+
++ 可直接在迭代器上调用`next`方法
+
++ 
 
