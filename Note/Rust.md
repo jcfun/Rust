@@ -5392,6 +5392,8 @@ fn main() {
 }
 ```
 
+
+
 ### 12.2 读取文件
 
 ```rust
@@ -5410,6 +5412,8 @@ fn main() {
     println!("With text: \n{}", contents);
 }
 ```
+
+
 
 ### 12.3 重构改进模块性和错误处理
 
@@ -5737,11 +5741,7 @@ impl Config {
 
 
 
-<<<<<<< HEAD
-## 13、Rust中的函数式语言功能：迭代器与闭包
-=======
-## 13、函数式语言特性：迭代器和闭包
-
+## 13、Rust中的函数式语言特性：迭代器与闭包
 ### 13.1 闭包（*closures*）：可以捕获环境的匿名函数
 
 Rust 的 **闭包**（*closures*）是可以保存在一个变量中或作为参数传递给其他函数的匿名函数。可以在一个地方创建闭包，然后在不同的上下文中执行闭包运算。不同于函数，闭包允许捕获被定义时所在作用域中的值。
@@ -6019,7 +6019,127 @@ fn generate_workout(intensity: u32, random_number: u32) {
 
 + 当指定`Fn trait bound`之一时，首先用`Fn`，基于闭包体里的情况，如果需要`FnOnce`或`FnMut`，编译器会再告诉你
 
-### 13.2 迭代器
 
 
+### 13.2 迭代器（iterator）
 
+迭代器模式允许你对一个序列的项进行某些处理。**迭代器**（*iterator*）负责遍历序列中的每一项和决定序列何时结束的逻辑。当使用迭代器时，我们无需重新实现这些逻辑。
+
+在 Rust 中，迭代器是 **惰性的**（*lazy*），这意味着在调用方法使用迭代器之前它都不会有效果。
+
+#### 13.2.1 什么是迭代器
+
++ 迭代器模式：对一系列项执行某些任务
+
++ 迭代器负责
+
+  +  遍历每个项
+  + 确定序列（遍历）何时完成
+
++ Rust的迭代器
+
+  + 惰性的（lazy）：除非调用消费迭代器的方法，否则迭代器本身没有任何效果
+
+    ```rust
+    let v1 = vec![1, 2, 3];
+    let v1_iter = v1.iter();
+    
+    for val in v1_iter {
+        println!("Got: {}", val);
+    }
+    ```
+
+#### 13.2.2 Iterator trait和next方法
+
+##### Iterator trait
+
++ 所有的迭代器都实现了`Iterator trait`标准库，定义大致如下：
+
+  ```rust
+  pub trait Iterator {
+      type Item;
+  
+      fn next(&mut self) -> Option<Self::Item>;
+  
+      // 这里省略了由Rust给出的默认实现方法
+  
+  }
+  ```
+
++ `type Item`和`Self::Item`定义了与该`trait`关联的类型
+
+  + 实现`Iterator trait`需要你定义一个`Item`类型，它用于`next`方法的返回的类型（迭代器的返回类型）
+
++ `Iterator trait`仅要求实现一个方法：`next`
+
++ `next`
+
+  + 每次返回迭代器中的一项
+  + 返回结果包裹在`Some`里
+  + 迭代结束，返回`None`
+
++ 可直接在迭代器上调用`next`方法
+
+  ```rust
+  let v1 = vec![1, 2, 3];
+  let mut v1_iter = v1.iter();
+  
+  assert_eq!(v1_iter.next(), Some(&1));
+  assert_eq!(v1_iter.next(), Some(&2));
+  assert_eq!(v1_iter.next(), Some(&3));
+  ```
+
+##### 几个迭代方法
+
++ `iter`方法：在不可变引用上创建迭代器
++ `into_iter`方法：创建爱的迭代器会获得所有权
++ `iter_mut`方法：迭代可变的引用
+
+#### 13.2.3 消耗 / 产生迭代器
+
+##### 消耗迭代器的方法
+
++ 在标准库中，`Iterator trait`有一些带默认实现的方法
+
++ 其中有一些方法会调用`next`方法
+
+  + 实现`Iterator trait`时必须实现`next`方法的原因之一
+
++ 调用`next`的方法叫做”消耗型适配器“
+
+  + 因为调用它们会把迭代器消耗尽
+
++ 例如：`sum`方法（就会耗尽迭代器）
+
+  + 会取得迭代器的所有权
+  + 通过反复调用`next`，遍历所有元素
+  + 每次迭代，把当前元素添加到一个总和里，迭代结束，返回总和
+
+  ```rust
+  let v1 = vec![1, 2, 3];
+      let v1_iter = v1.iter();
+      let total: i32 = v1_iter.sum();
+  
+      assert_eq!(total, 6);
+  ```
+
+##### 产生其它迭代器的方法
+
++ 定义在`Iterator trait`上的另外一些方法叫做“迭代器适配器”
+
+  + 把迭代器转换为不同种类的迭代器
+
++ 可以通过链式调用使用多个迭代器适配器来执行复杂的操作，这种调用可读性较高
+
++ 例如：`map`
+
+  + 接收一个闭包，闭包作用于每个元素
+  + 产生一个新的迭代器
+
+  ```rust
+  let v1 = vec![1, 2, 3];
+  let v2: Vec<_> = v1.iter().map(|x| x + 1).collect();
+  assert_eq!(v2, vec![2, 3, 4]);
+  ```
+
+  
