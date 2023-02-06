@@ -337,6 +337,7 @@ println!("{}", spaces);
     ```
 
 + **函数体中的语句与表达式**
+  
   + 函数体由一系列语句组成，可选的有一个表达式结束
   
   + Rust是一个基于表达式的语言
@@ -357,7 +358,7 @@ println!("{}", spaces);
         x + 3
     };
     ```
-
+  
 + 函数的返回值
   + 在 `->`符号后面声明函数返回值的类型，但是不可以为返回值命名
   
@@ -6105,7 +6106,7 @@ fn generate_workout(intensity: u32, random_number: u32) {
 
   + 实现`Iterator trait`时必须实现`next`方法的原因之一
 
-+ 调用`next`的方法叫做”消耗型适配器“
++ 调用`next`方法的方法叫做”消耗型适配器“
 
   + 因为调用它们会把迭代器消耗尽
 
@@ -6125,7 +6126,7 @@ fn generate_workout(intensity: u32, random_number: u32) {
 
 ##### 产生其它迭代器的方法
 
-+ 定义在`Iterator trait`上的另外一些方法叫做“迭代器适配器”
++ 定义在`Iterator trait`上的另外一类方法叫做“迭代器适配器”
 
   + 把迭代器转换为不同种类的迭代器
 
@@ -6140,6 +6141,68 @@ fn generate_workout(intensity: u32, random_number: u32) {
   let v1 = vec![1, 2, 3];
   let v2: Vec<_> = v1.iter().map(|x| x + 1).collect();
   assert_eq!(v2, vec![2, 3, 4]);
+  ```
+
+
+#### 13.2.4 使用闭包捕获环境
+
++ `filter`方法
+
+  + 接受一个闭包
+  + 这个闭包在遍历迭代器的每个元素时，返回`bool`类型
+  + 如果闭包返回`true`：当前元素将会包含在`filter`产生的迭代器中
+  + 如果闭包返回`false`：当前元素将不会包含在`filter`产生的迭代器中
+
+  ```rust
+  #[derive(PartialEq, Debug)]
+  struct Shoe {
+      size: u32,
+      style: String,
+  }
+  
+  fn shoes_in_my_size(shoes: Vec<Shoe>, shoe_size: u32) -> Vec<Shoe> {
+      shoes.into_iter().filter(|x| x.size == shoe_size).collect()
+  }
+  
+  #[test]
+  fn filter_by_size() {
+      let shoes = vec![
+          Shoe {
+              size: 10,
+              style: String::from("sneaker"),
+          },
+          Shoe {
+              size: 13,
+              style: String::from("sandal"),
+          },
+          Shoe {
+              size: 10,
+              style: String::from("boot"),
+          },
+      ];
+      let in_my_size = shoes_in_my_size(shoes, 10);
+  
+      assert_eq!(
+          in_my_size,
+          vec![
+              Shoe {
+                  size: 10,
+                  style: String::from("sneaker"),
+              },
+              Shoe {
+                  size: 10,
+                  style: String::from("boot"),
+              },
+          ]
+      )
+  }
+  ```
+
+#### 13.2.5 使用Iterator trait来创建自定义迭代器
+
++ 实现`next`方法
+
+  ```rust
   ```
 
   

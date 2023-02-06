@@ -2,8 +2,8 @@
  * @Author: jc-fun urainstar@gmail.com
  * @Date: 2023-02-03 09:23:35
  * @LastEditors: jc-fun urainstar@gmail.com
- * @LastEditTime: 2023-02-06 00:51:12
- * @FilePath: \iterator_demo\src\main.rs
+ * @LastEditTime: 2023-02-06 09:25:20
+ * @FilePath: /iterator_demo/src/main.rs
  * @Description:
  */
 fn main() {
@@ -33,7 +33,11 @@ fn main() {
 
 
 
-    let v1 = vec![1, 2, 3];
-    let v2: Vec<_> = v1.iter().map(|x| x + 1).collect();
-    assert_eq!(v2, vec![2, 3, 4]);
+    // let v1 = vec![1, 2, 3];
+    // let v2: Vec<_> = v1.iter().map(|x| x + 1).collect();
+    // assert_eq!(v2, vec![2, 3, 4]);
+
+
+
+    
 }
