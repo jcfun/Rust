@@ -2,8 +2,8 @@
  * @Author: jc-fun urainstar@gmail.com
  * @Date: 2023-02-06 09:25:41
  * @LastEditors: jc-fun urainstar@gmail.com
- * @LastEditTime: 2023-02-06 15:41:07
- * @FilePath: /iterator_demo/src/lib.rs
+ * @LastEditTime: 2023-02-06 22:29:28
+ * @FilePath: \iterator_demo\src\lib.rs
  * @Description:
  */
 // #[derive(PartialEq, Debug)]
@@ -51,7 +51,7 @@
 
 
 
-
+#[derive(Debug)]
 struct Counter {
     count: u32,
 }
@@ -89,11 +89,17 @@ fn calling_next_directly() {
 
 #[test]
 fn using_other_iterator_trait_methods() {
+    // let sum: Vec<u32> = Counter::new()
+    //     .zip(Counter::new().skip(1))
+    //     .map(|(a, b)| a * b).collect();
+        
+    // println!("{:#?}", sum);
+
     let sum: u32 = Counter::new()
         .zip(Counter::new().skip(1))
         .map(|(a, b)| a * b)
         .filter(|x| x % 3 == 0)
         .sum();
-    
+        
     assert_eq!(18, sum);
 }
