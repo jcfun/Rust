@@ -6737,13 +6737,43 @@ fn generate_workout(intensity: u32, random_number: u32) {
   ]
   ```
 
-#### 14.3.4 进行代码测试
+#### 14.3.4 运行代码测试
 
 + 在 *add* 根目录下执行`cargo test`命令，会一次性执行工作空间中所有包的测试。
 
-+ 我们同样可以在工作空间根目录下，使用参数-p及指定的包名称来运行某一个特定包的测试，例：``
++ 我们同样可以在工作空间根目录下，使用参数-p及指定的包名称来运行某一个特定包的测试，例：`cargo test -p add-one`
 
-  
+
+
+
+### 14.4 从 crates.io 安装二进制 crate
+
++ 命令：`cargo install`
++ 来源：https://crates.io
++ 限制：只能安装具有二进制目标（binary target）的`crate`
++ 二进制目标`binary target`：是一个可执行程序
+  + 由拥有`src/main.rs`或其它被指定为二进制文件的`crate`生成
++ 通常：README里有关于`crate`的描述
+  + 是否拥有`library target`
+  + 是否拥有`binary target`
+  + 两者兼备
+
+#### 14.4.1 cargo install
+
++ `cargo install`安装的二进制`crate`存放在根目录的`bin`文件夹
++ 如果你用`rustup`安装的rust，没有任何自定义的配置，那么二进制`crate`存放的目录是`$HOME/.cargo/bin`
+  + 要确保该目录在环境变量`$PATH`中
+
+#### 14.4.2 使用自定义命令扩展 cargo
+
++ `Cargo`被设计成可以使用子命令来扩展
++ 如果你的$PATH路径中存在二进制文件cargo-something，就可以通过运行`cargo something`来运行该二进制文件，就好像它是`Cargo`的子命令一样
++ 类似这样的自定义命令可以通过`cargo --list`命令列出
++ 优点：可使用`cargo install`来安装扩展，并想内置工具一样来运行
+
+
+
+
 
 
 
