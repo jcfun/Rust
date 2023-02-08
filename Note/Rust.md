@@ -6395,3 +6395,361 @@ fn generate_workout(intensity: u32, random_number: u32) {
 
 ### 14.2 将包发布到crates.io上
 
+#### 14.2.1 crates.io
+
++ 可以通过发布包来共享你的代码
++ `crate`的注册表在 https://crates.io
+  + 它会分发已注册的包的源代码
+  + 主要托管开源的代码
+
+#### 14.2.2 文档注释
+
++ 文档注释：用于生成文档
+
+  + 生成HTML文档
+  + 显式公共API的文档注释：如何使用API
+  + 使用`///`
+  + 支持Markdown
+  + 放置在被说明条目之前
+
+  ```rust
+  /// Adds one to the number given
+  ///
+  /// # Examples
+  ///
+  /// ```
+  /// let arg = 5;
+  /// let answer = cargo_crates_demo::add_one(arg);
+  ///
+  /// assert_eq!(6, answer);
+  ///
+  pub fn add_one(x: i32) -> i32 {
+    x + 1
+  }
+  ```
+
+##### 生成HTML文档的命令
+
++ `cargo doc`
+  + 它会运行`rustdoc`工具（rust安装包自带）
+  + 把生成的HTML文档放在`target/doc`目录下
++ `cargo doc --open`
+  + 构建当前`crate`的文档（也包含crate依赖项的文档）
+  + 在浏览器打开文档
+
+##### 常用文档注释区域
+
++ `#Examples`
++ 其它常用区域
+  + `Panics`：函数可能发生`panic`的场景
+  + `Errors`：如果函数返回`Result`，描述可能的错误种类，以及可能导致错误的条件
+  + `Safety`：如果函数处于`unsafe`调用，就应该解释函数`unsafe`的原因，以及调用者确保的使用前提
+
+##### 文档注释作为测试
+
++ 示例代码块的附加值
+  + 运行`cargo test`：将把文档注释中的示例代码作为测试来运行
+
+##### 为包含注释的项添加文档注释
+
++ 符号：`//!`
+
++ 这类注释通常用于描述`crate`和模块
+
+  + `crate root`（按惯例 src / lib.rs）
+  + 一个模块内，将`crate`或模块作为一个整体进行记录
+
+  ```rust
+  //! # cargo_crates_demo
+  //!
+  //! cargo_crates_demo是一系列工具的集合，
+  //! 这些工具被用来简化特定的计算操作
+  
+  /// Adds one to the number given
+  ///
+  /// # Examples
+  ///
+  /// ```
+  /// let arg = 5;
+  /// let answer = cargo_crates_demo::add_one(arg);
+  ///
+  /// assert_eq!(6, answer);
+  ///
+  pub fn add_one(x: i32) -> i32 {
+    x + 1
+  }
+  ```
+
+  ![rustdoc](./assets/rustdoc.png)
+
+#### 14.2.3 使用 pub use 导出方便使用的公共 API
+
++ 问题：`crate`的程序结构在开发时对于开发者很合理，但对于它的使用者不够方便
+
+  + 开发者会把程序结构分为很多层，使用者想找到这种深层结构中的某个类型很费劲
+
++ 例如：
+
+  + 麻烦：`my_crate::some_module::another_module::UsefulType`
+  + 方便：`my_crate::UsefulType`
+
++ 解决办法：
+
+  + 不需要重新组织内部代码结构
+  + 使用`pub use`：可以重新导出，创建一个与内部私有结构不同的对外公共结构
+
+  **src/lib.sr**
+
+  ```rust
+  pub use self::kinds::PrimaryColor;
+  pub use self::kinds::SecondaryColor;
+  pub use self::utils::mix;
+  
+  pub mod kinds {
+      pub enum PrimaryColor {
+          Red,
+          Yellow,
+          Blue,
+      }
+  
+      pub enum SecondaryColor {
+          Orange,
+          Green,
+          Purple,
+      }
+  }
+  
+  pub mod utils {
+      use crate::kinds::*;
+  
+      pub fn mix(c1: PrimaryColor, c2: PrimaryColor) -> SecondaryColor {
+          SecondaryColor::Green
+      }
+  }
+  ```
+
+  **src/main.rs**
+
+  ```rust
+  // use cargo_crates_demo::kinds::PrimaryColor;
+  // use cargo_crates_demo::utils::mix;
+  use cargo_crates_demo::PrimaryColor;
+  use cargo_crates_demo::mix;
+  
+  fn main() {
+      let red = PrimaryColor::Red;
+      let yellow = PrimaryColor::Yellow;
+      mix(red, yellow);
+  }
+  
+  ```
+
+#### 14.2.4 创建并设置 Crates.io 账号
+
++ 发布`crate`前，需要在`crates.io`创建账号并获取`API token`
++ 运行命令：`cargo login [API token]
+  + 通知`cargo`，你的`API token`存储在本地`~/.cargo/credentials`
++ `API token`可以在 https://crates.io 进行撤销
+
+#### 14.2.5 为新的 crate 添加元数据
+
++ 在发布`crate`之前，需要在`Cargo.toml`的[package]区域为`crate`添加一些元数据
+  + name：`crate`需要唯一的名称
+  + description：一两句话即可，会出现在`crate`搜索的结果里
+  + license：需要提供许可证标识值（可到 http://spdx.org/licenses 查找）
+    + 可指定多个 license：用 OR
+  + version
+  + author
++ 发布：`cargo publish`
+
+#### 14.2.6 发布到 Crates.io
+
++ `crate`一旦发布，就是永久性的：该版本无法覆盖，代码无法删除
+  + 目的：依赖于该版本的项目可继续正常工作
+
+#### 14.2.7 发布已存在 crate 的新版本
+
++ 修改`crate`后，需要先修改`Cargo.toml`里面的 version 值，再进行重新发布
++ 参照 http://semver.org 来使用你的语义版本
++ 再执行`cargo publish`进行发布
+
+#### 14.2.8 使用 cargo yank 从 Crates.io 撤回版本
+
++ 不可以删除`crate`之前的版本
++ 但可以防止其它项目把它作为新的依赖：`yank`（撤回）一个`crate`版本
+  + 防止新项目依赖于该版本
+  + 已经存在项目可继续将其作为依赖（并可下载）
++ `yank`意味着
+  + 所有已经产生`Cargo.lock`的项目都不会中断
+  + 任何将来生成的`Cargo.lock`文件都不会使用被`yank`的版本
++ 命令
+  + `yank`一个版本（不会删除任何代码）：`cargo yank --vers 1.0.1`
+  + 取消`yank`：`cargo yank --vers 1.0.1 --undo`
+
+
+
+### 14.3 Cargo 工作空间（Workspace）
+
++ `Cargo`工作空间：帮助管理多个相互关联且需要协同开发的`crate`
++ `Cargo`工作空间是一套共享同一个`Cargo.lock`和输出文件夹的包
+
+#### 14.3.1 创建工作空间
+
++ 有多种方式来组建工作空间：例：1 个二进制`crate`，2 个库`crate`
+  + 二进制`crate`：`main`函数，依赖于其它 2 个库`crate`
+  + 其中 1 个库`crate`提供`add_one`函数
+  + 另外 1 个库`crate`提供`add_two`函数
+
+1. 创建工作空间目录 add，添加`Cargo.toml`
+
+   ```shell
+   mkdir add
+   cd add
+   touch Cargo.toml && echo '[workspace]
+   members = [
+       "adder",
+   ]' > Cargo.toml
+   ```
+
+2. 创建二进制包：adder
+
+   `cargo new addr`
+
+#### 14.3.2 在工作空间中创建第二个包
+
+1. 向根目录下的`Cargo.toml`文件添加`add-one`路径
+
+   ```toml
+   [workspace]
+   members = [
+       "adder",
+       "add-one",
+   ]
+   ```
+
+2. 生成一个名为 add-one 的新代码包
+
+   `cargo new add-one --lib`
+
+   此时，*add* 目录下应该有如下所示的目录和文件：
+
+   ```shell
+   ├── Cargo.lock
+   ├── Cargo.toml
+   ├── add-one
+   │   ├── Cargo.toml
+   │   └── src
+   │       └── lib.rs
+   ├── adder
+   │   ├── Cargo.toml
+   │   └── src
+   │       └── main.rs
+   └── target
+   ```
+
+3. 在*add-one/src/lib.rs* 文件中添加一个add_one函数并调用：
+
+   ###### add-one/src/lib.rs
+
+   ```rust
+   pub fn add_one(x: i32) -> i32 {
+        x + 1
+   }
+   ```
+
+   创建好新的代码包后，我们可以让二进制包adder依赖于代码包add-one。首先，我们需要在adder/Cargo.toml 中添加add-one的路径作为依赖：
+
+   ###### adder/Cargo.toml
+
+   ```toml
+   [dependencies]
+   add-one = { path = "../add-one" }
+   ```
+
+   修改main函数来调用add_one函数，如示例14-7所示。
+
+   ###### adder/src/main.rs
+
+   ```rust
+   use add_one;
+   
+   fn main() {
+       let num = 10;
+       println!("Hello, world! {} plus one is {}!", num, add_one::add_one(num));
+   }
+   ```
+
+   在add 根目录下运行cargo build来构建整个工作空间：
+
+   ```shell
+   $ cargo build
+   
+      Compiling add-one v0.1.0 (file:///projects/add/add-one)
+      Compiling adder v0.1.0 (file:///projects/add/adder)
+       Finished dev [unoptimized + debuginfo] target(s) in 0.68 secs
+   ```
+
+   为了在add 根目录下运行二进制包，我们需要在调用cargo run时通过-p参数来指定需要运行的包名：
+
+   ```shell
+   $ cargo run -p adder
+   
+       Finished dev [unoptimized + debuginfo] target(s) in 0.0 secs
+        Running `target/debug/adder`
+   Hello, world! 10 plus one is 11!
+   ```
+
+   上面的命令运行了adder/src/main.rs 中的代码，而这段代码则依赖了add-one包。
+
+#### 14.3.3 在工作空间中依赖外部 crate
+
++ 工作空间只有一个`Cargo.lock`文件，在工作空间的顶层目录
+
+  + 保证工作空间内所有`crate`使用的依赖的版本都相同
+  + 工作空间内所有`crate`相互兼容
+
++ **add-one/Cargo.toml**
+
+  ```toml
+  [dependencies]
+  rand = "0.8.2"
+  ```
+
++ **adder/Cargo.toml**
+
+  ```toml
+  [dependencies]
+  rand = "0.8.1"
+  ```
+
++ **add/Cargo.lock**
+
+  ```lock
+  [[package]]
+  name = "rand"
+  version = "0.8.5"
+  source = "registry+https://github.com/rust-lang/crates.io-index"
+  checksum = "34af8d1a0e25924bc5b7c43c079c942339d8f0a8b57c39049bef581b46327404"
+  dependencies = [
+   "libc",
+   "rand_chacha",
+   "rand_core",
+  ]
+  ```
+
+#### 14.3.4 进行代码测试
+
++ 在 *add* 根目录下执行`cargo test`命令，会一次性执行工作空间中所有包的测试。
+
++ 我们同样可以在工作空间根目录下，使用参数-p及指定的包名称来运行某一个特定包的测试，例：``
+
+  
+
+
+
+
+
+
+
+
+
