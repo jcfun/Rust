@@ -6257,4 +6257,141 @@ fn generate_workout(intensity: u32, random_number: u32) {
   }
   ```
   
+
+
+
+### 13.3 改进I/O项目
+
+#### 13.3.1 使用迭代器代替clone
+
++ **src/lib.rs**
+
+  ```rust
+  impl Config {
+      pub fn new(args: &[String]) -> Result<Config, &'static str> {
+          if args.len() < 3 {
+              return Err("not enough arguments");
+          }
   
+          let query = args[1].clone();
+          let filename = args[2].clone();
+  
+          let case_sensitive = env::var("CASE_INSENSITIVE").is_err();
+  
+          Ok(Config { query, filename, case_sensitive })
+      }
+  }
+  ```
+
+  ```rust
+  pub fn new(mut args: std::env::Args) -> Result<Config, &'static str> { 
+      if args.len() < 3 {
+          return Err("not enough arguments");
+      }
+      args.next();
+      let query = match args.next() {
+          Some(arg) => arg,
+          None => return Err("Didn't get a query string"),
+  
+      };
+      let filename = match args.next() {
+          Some(arg) => arg,
+          None => return Err("Didn't get a file name"),
+  
+      };
+      let case_sensitive = env::var("CASE_INSENSITIVE").is_err();
+      Ok(Config { query, filename, case_sensitive })
+  }
+  ```
+
++ **src/main.rs**
+
+  ```rust
+  fn main() {
+  
+      // let args: Vec<String> = env::args().collect();
+  
+      let config = Config::new(env::args()).unwrap_or_else(|err| {
+          eprintln!("Problem parsing arguments: {}", err);
+          process::exit(1);
+      });
+      if let Err(e) = minigrep::run(config) {
+          eprintln!("Application error: {}", e);
+          process::exit(1);
+      }
+  }
+  ```
+
+#### 13.3.2 使用迭代器适配器让代码更加清晰
+
++ **src/lib.rs**
+
+  ```rust
+  pub fn search<'a>(query: &str, contents: &'a str) -> Vec<&'a str> {
+      let mut results = Vec::new();
+  
+      for line in contents.lines() {
+          if line.contains(query) {
+              results.push(line);
+          }
+      }
+  
+      results
+  }
+  ```
+
+  ```rust
+  pub fn search<'a>(query: &str, contents: &'a str) -> Vec<&'a str> {
+      contents.lines()
+          .filter(|line| line.contains(query))
+          .collect()
+  }
+  ```
+
+
+
+### 13.4 性能比较：循环 vs 迭代器
+
+#### 13.4.1 零开销抽象（Zero-Cost Abstraction）
+
++ 使用抽象时，不会引入额外的运行时开销
+
+
+
+## 14、进一步认识Cargo及crates.io
+
+### 14.1 使用发布配置（release profile）来定制构建
+
+#### 14.1.1 release profile
+
++ 是预定义的
++ 可自定义：可使用不同的配置，对代码编译拥有更多的控制
++ 每个`profile`的配置都独立于其它的`profile`
++ `Cargo`主要的两个`profile`
+  + `dev profile`：适用于开发，`cargo build`
+  + `release profile`：适用于发布，`cargo build --release`
+
+#### 14.1.2 自定义profile
+
++ 针对每个`profile`，`Cargo`都提供了默认的配置
+
++ 如果想自定义`xxxx profile`的配置
+
+  + 可以在`Cargo.toml`里添加`[profile.xxxx]`区域，在里面覆盖默认配置的子集
+
+  ```toml
+  [profile.dev]
+  opt-level = 1
+  
+  [profile.release]
+  opt-level = 3
+  ```
+
+  选项`opt-level`决定了Rust在编译时会对代码执行何种程度的优化，从0到3都是合法的配置值。这段配置覆盖了对应选项的默认值0。当你再次运行`cargo build`时，`Cargo`会使用我们指定的`opt-level`值并在其他选项上保持`dev`的默认配置。将`opt-level`设置为1会让`Cargo`比在默认配置下多执行一些优化，但仍然没有发布时使用的优化那么多。
+
+  对于每个选项的默认值和完整选项，详见：https://doc.rust-lang.org/cargo/reference/profiles.html
+
+
+
+### 14.2 将包发布到crates.io上
+
