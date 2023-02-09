@@ -1445,10 +1445,10 @@ fn change(some_string: &mut String) {
 
 ```rust
 struct User {
-active: bool,
-username: &str,
-email: &str,
-sign_in_count: u64,
+    active: bool,
+    username: &str,
+    email: &str,
+    sign_in_count: u64,
 }
 ```
 
@@ -6761,7 +6761,7 @@ fn generate_workout(intensity: u32, random_number: u32) {
 #### 14.4.1 cargo install
 
 + `cargo install`安装的二进制`crate`存放在根目录的`bin`文件夹
-+ 如果你用`rustup`安装的rust，没有任何自定义的配置，那么二进制`crate`存放的目录是`$HOME/.cargo/bin`
++ 如果你用`rustup`安装的Rust，没有任何自定义的配置，那么二进制`crate`存放的目录是`$HOME/.cargo/bin`
   + 要确保该目录在环境变量`$PATH`中
 
 #### 14.4.2 使用自定义命令扩展 cargo
@@ -6773,9 +6773,248 @@ fn generate_workout(intensity: u32, random_number: u32) {
 
 
 
+## 15、智能指针
+
+### 相关概念
+
+#### 指针和引用
+
++ 指针：一个变量在内存中包含的是一个地址（指向其它数据）
++ Rust中最常见的指针就是“引用”
++ 引用
+  + 使用`&`
+  + 借用它指向的值
+  + 没有其余开销
+  + 最常见的指针类型
+
+#### 智能指针
+
++ 智能指针是这样的一写数据结构
+  + 行为和指针相似
+  + 有额外的元数据和功能
+
+#### 引用计数（reference counting）智能指针类型
+
++ 通过记录所有者的数量，使一份数据被多个所有者同时持有
++ 并在没有任何所有者时自动清理数据
+
+#### 引用和智能指针的其它不同
+
++ 引用：只借用数据
++ 智能指针：很多时候都拥有它所指向的数据
+
+#### 智能指针的例子
+
++ `String`和`Vec<T>`
++ 都拥有一片内存区域，且允许用户对其进行操作
++ 都拥有元数据（例如容量等）
++ 提供额外的功能或保障（`String`保障其数据是合法的 UTF-8 编码）
+
+#### 智能指针的实现
+
++ 智能指针通常使用`struct`实现，并且实现了
+  + `Deref`和`Drop`这两个`trait`
++ `Deref trait`：允许智能指针`struct`的实例像引用一样使用
++ `Drop trait`：允许你自定义当智能指针实例走出作用域时的代码
 
 
 
+### 15.1 使用 Box\<T> 来指向 Heap 上的数据
+
+#### 15.1.1 Box\<T>
+
++ `Box<T>` 是最简单的智能指针
+  + 允许你在`heap`上存储数据（而不是`stack`）
+  + `stack`上是指向`heap`数据的指针
+  + 没有性能开销
+  + 没有其它额外的功能
+  + 实现了`Deref trait`和`Drop trait`
+
+##### Box\<T> 的使用场景
+
++ 在编译时，某类型的大小无法确定，但使用该类型时，上下文却需要知道它的确切大小
++ 当你有大量数据，想移交所有权，但需要确保在操作时数据不会被复制
++ 使用某个值时，你只关心它是否实现了特定的`trait`，而不关心它的具体类型
+
+#### 15.1.2 使用 Box\<T> 在堆上存储数据
+
+```rust
+fn main() {
+    let b = Box::new(5);
+    println!("b = {}", b);
+}
+```
+
+#### 15.1.3 使用 Box 赋能递归类型
+
++ 在编译时，Rust 需要知道一个类型所占的空间大小
++ 而递归类型的大小无法在编译时确定
++ Box 类型可以确定其大小
+
+##### 一个递归类型：链接列表（Cons List）
+
++ `Cons List`是来自 Lisp 语言的一种数据结构
++ `Cons List`里每个成员由两个元素组成
+  + 当前项的值
+  + 下一元素
++ `Cons List`里最后一个成员只包含一个`Nil`值，没有下一个元素
+
+##### Cons List 并不是 Rust 的常用集合
+
++ 通常情况下，`Vec<T>`是更好的选择
+
++ 创建一个`Cons List`
+
+  ```rust
+  enum List {
+      Cons(i32, List),
+      Nil,
+  }
+  fn main() {
+      use crate::List::{Cons, Nil};
+  	let list = Cons(1, Cons(2, Cons(3, Nil())));
+  }
+  ```
+
+  ```rust
+    --> src/main.rs:11:1
+     |
+  11 | enum List {
+     | ^^^^^^^^^ recursive type has infinite size
+  12 |     Cons(i32, List),
+     |               ---- recursive without indirection
+     |
+  help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `List` representable
+     |
+  12 |     Cons(i32, Box<List>),
+     |               ++++    +
+  
+  Some errors have detailed explanations: E0072, E0425.
+  For more information about an error, try `rustc --explain E0072`.
+  ```
+
+  ![recursive](./assets/recursive.png)
+
+  编译器会首先检查`Cons`变体，并发现它持有一个i32类型的值及另外一个`List`类型的值。因此，`Cons`变体需要的空间也就等于一个`i32`值的大小加上一个List值的大小。为了确定List值所需的空间大小，编译器又会从`Cons`开始遍历其下的所有变体，这样的检查过程将永无穷尽地进行下去
+
++ Rust 如何确定为枚举分配的空间大小
+
+  ```rust
+  enum Message {
+      Quit,
+      Move {x: i32, y: i32},
+      Write(String),
+      ChangeColor(i32, i32, i32),
+  }
+  ```
+
+  为了计算出Message值需要多大的存储空间，Rust会遍历枚举中的每一个成员来找到需要最大空间的那个变体。在Rust眼中，`Message::Quit`不需要占用任何空间，`Message::Move`需要两个存储`i32`值的空间，以此类推。因为在每个时间点只会有一个变体存在，所以Message值需要的空间大小也就是能够存储得下最大变体的空间大小。
+
+##### 使用 Box 来获得确定大小的递归类型
+
++ `Box<T>`是一个指针，Rust 知道它需要多少空间
+
+  + 指针的大小不会基于它指向的数据的大小变化而变化
+
+  ![box](./assets/box.png)
+
++ `Box<T>`
+
+  + 只提供了“间接”存储和`heap`内存分配的功能
+  + 没有其它额外功能
+  + 没有性能开销
+  + 适用于需要“间接”存储的场景，例如`Cons List`
+  + 实现了`Deref trait`和`Drop trait`
+
+
+
+### 15.2 通过Deref trait将智能指针视作常规引用
+
+#### 15.2.1 Deref Trait
+
++ 实现`Deref Trait`使我们可以自定义解引用运算符`*`的行为
++ 通过实现`Deref`，智能指针可以像常规引用一样来处理
+
+#### 15.2.2 解引用运算符 *
+
++ 常规引用是一种指针
+
+  ```rust
+  fn main() {
+      let x = 5;
+      let y = &x;
+  
+      assert_eq!(5, x);
+      assert_eq!(5, *y);
+  }
+  ```
+
+#### 15.2.3 把 Box\<T> 当做引用
+
++ `Box<T>`可以代替上例中的引用
+
+  ```rust
+  fn main() {
+      let x = 5;
+      let y = Box::new(x);
+  
+      assert_eq!(5, x);
+      assert_eq!(5, *y);
+  }
+  ```
+
+#### 15.2.4 定义自己的智能指针
+
++ `Box<T>`被定义为拥有一个元素的`tuple struct`
+
+  ```rust
+  struct MyBox<T>(T);
+  
+  impl<T> MyBox<T> {
+      fn new(x:T) -> MyBox<T> {
+          MyBox(x)
+      }
+  }
+  
+  let x = 5;
+  let y = MyBox::new(x);
+  assert_eq!(5, x);
+  assert_eq!(5, *y); // type `MyBox<{integer}>` cannot be dereferenced
+  ```
+
+#### 15.2.5 实现 Deref Trait
+
++ 标准库中的`Deref trait`要求我们实现一个`deref`方法
+
+  + 该方法借用`self`
+  + 返回一个指向内部数据的引用
+
+  ```rust
+  use std::ops::Deref;
+  
+  struct MyBox<T>(T);
+  
+  impl<T> MyBox<T> {
+      fn new(x:T) -> MyBox<T> {
+          MyBox(x)
+      }
+  }
+  
+  impl<T> Deref for MyBox<T> {
+      type Target = T;
+  
+      fn deref(&self) -> &T {
+          &self.0
+      }
+  }
+  
+  let x = 5;
+  let y = MyBox::new(x);
+  assert_eq!(5, x);
+  assert_eq!(5, *y); // *y <==> *(y.der)
+  ```
+
+  
 
 
 
