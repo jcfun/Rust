@@ -344,11 +344,15 @@ println!("{}", spaces);
   
   + 语句是执行一些动作的指令
   
-  + 表达式会计算产生一个值
+  + 表达式会计算产生一个值，因此它必然有类型
   
   + 函数的定义也是语句
   
-  + 语句不返回值，所以不可以使用`let`将语句赋值 给一个变量
+  + 语句不返回值，它的类型永远是`()`，所以不可以使用`let`将语句赋值 给一个变量
+  
+  + 如果把一个表达式加上分号，那么它就变成 了一个语句
+  
+  + 如果把语句放到一个语句块中包起来，那么它就可以被当 成一个表达式使用
   
     ```rust
     // let x = (let y = 6); // expected expression, found statement (`let`)
@@ -870,7 +874,7 @@ println!("{}", spaces);
 
 #### 4.2.2 借用（borrowing）
 
-+ 我们将创建一个引用的行为称为 **借用**（*borrowing*）。正如现实生活中，如果一个人拥有某样东西，你可以从他那里借来。当你使用完毕，必须还回去。我们并不拥有它
++ 我们将创建一个引用的行为称为**借用**（*borrowing*）。正如现实生活中，如果一个人拥有某样东西，你可以从他那里借来。当你使用完毕，必须还回去。我们并不拥有它
 
 + 如果我们尝试修改借用的变量呢？
 
@@ -917,7 +921,7 @@ fn change(some_string: &mut String) {
 }
 ```
 
-我们通过一个小调整就能允许我们修改一个借用的值，这就是 **可变引用**
+我们通过一个小调整就能允许我们修改一个借用的值，这就是**可变引用**
 
 + 首先，我们必须将 `s` 改为 `mut`。然后在调用 `change` 函数的地方创建一个可变引用 `&mut s`，并更新函数签名以接受一个可变引用 `some_string: &mut String`。这就非常清楚地表明，`change` 函数将改变它所借用的值。
 
@@ -960,7 +964,7 @@ fn change(some_string: &mut String) {
 
 + 数据竞争会导致未定义行为，难以在运行时追踪，并且难以诊断和修复；Rust 避免了这种情况的发生，因为它甚至不会编译存在数据竞争的代码！
 
-+ 可以使用大括号来创建一个新的作用域，以允许拥有多个可变引用，只是不能 **同时** 拥有
++ 可以使用大括号来创建一个新的作用域，以允许拥有多个可变引用，只是不能**同时**拥有
 
   ```rust
   fn main() {
@@ -1064,7 +1068,7 @@ fn change(some_string: &mut String) {
 
 #### 4.2.5 引用的规则
 
-- 在任意给定时间，**要么** 只能有一个可变引用，**要么** 只能有多个不可变引用。
+- 在任意给定时间，**要么**只能有一个可变引用，**要么**只能有多个不可变引用。
 - 引用必须总是有效的。
 
 
@@ -7011,14 +7015,311 @@ fn main() {
   let x = 5;
   let y = MyBox::new(x);
   assert_eq!(5, x);
-  assert_eq!(5, *y); // *y <==> *(y.der)
+  assert_eq!(5, *y); // *y <==> *(y.deref())
   ```
 
+
+#### 15.2.6 函数和方法的隐式解引用转换（Deref Coercion）
+
++ 隐式解引用转换（Deref Coercion）是为函数和方法提供的一种便捷特性
+
++ 假设`T`实现了`Deref trait`
+
+  + `Deref Coercion`可以把`T`的引用转化为`T`讲过`Deref`操作后生成的引用
+
++ 当把某个类型的引用传递给函数或方法时，但它的类型与定义的参数类型不匹配
+
+  + `Deref Coercion`就会自动发生
+  + 编译器会对`deref`进行一系列调用，来把它转为所需的参数类型
+    + 在编译时完成，没有额外的性能开销
+
+  ```rust
+  use std::ops::Deref;
   
+  fn hello(name: &str) {
+      println!("Hello, {}", name);
+  }
+  
+  fn main() {
+  
+      let m = MyBox::new(String::from("Rust"));
+  
+      // &m => &MyBox<String>
+      // deref => &String
+      // deref => &str
+      hello(&m);
+      hello(&(*m)[..]);
+  
+      hello("Rust");
+  
+  }
+  
+  struct MyBox<T>(T);
+  
+  impl<T> MyBox<T> {
+      fn new(x: T) -> MyBox<T> {
+          MyBox(x)
+      }
+  }
+  
+  impl<T> Deref for MyBox<T> {
+      type Target = T;
+  
+      fn deref(&self) -> &T {
+          &self.0
+      }
+  }
+  ```
+
+#### 15.2.7 解引用与可变性
+
++ 可使用`DerefMut trait`重载可变引用的`*`运算符
++ 在类型和`trait`在下列三种情况发生时，Rust会执行`deref coercion`
+  + 当`T:Deref<Target=U>`，允许`&T`转换为`&U`
+  + 当`T:DerefMut<Target=U>`，允许`&mut T`转换为`&mut U`
+  + 当`T:Deref<Target=U>`，允许`&mut T`转换为`&U`
 
 
 
+### 15.3 借助Drop trait在清理时运行代码
 
++ 实现`Drop Trati`，可以让我们自定义当值将要离开作用域时发生的动作
+
+  + 例如：文件、网络资源释放等
+  + 任何类型都可以实现`Drop trait`
+
++ `Drop trait`只要求你实现`drop`方法
+
+  + 参数：对`self`的可变引用
+
++ `Drop trait`在预导入模块里（prelude）
+
+  ```rust
+  struct CustomSmartPointer {
+      data: String,
+  }
+  
+  impl Drop for CustomSmartPointer {
+      fn drop(&mut self) {
+          println!("Dropping CustomSmartPointer with date `{}`!", self.data);
+      }
+  }
+  
+  fn main() {
+      let c = CustomSmartPointer {
+          data: String::from("my stuff"),
+      };
+      let d = CustomSmartPointer {
+          data: String::from("other stuff"),
+      };
+      println!("CustomSmartPointer created");
+  }
+  ```
+
+  ```shell
+  CustomSmartPointer created
+  Dropping CustomSmartPointer with date `other stuff`!
+  Dropping CustomSmartPointer with date `my stuff`!
+  ```
+
+#### 15.3.1 使用 std::mem::drop 来提前 drop 值
+
++ 很难直接禁用自动的`drop`功能，也没必要
+
+  + `Drop trait`的目的就是进行自动的释放处理逻辑
+
++ Rust 不允许手动调用`Drop trait`的`drop`方法
+
+  ```rust
+  let c = CustomSmartPointer {
+      data: String::from("my stuff"),
+  };
+  let d = CustomSmartPointer {
+      data: String::from("other stuff"),
+  };
+  d.drop();
+  println!("CustomSmartPointer created");
+  ```
+
+  ```shell
+  |     d.drop();
+  |     --^^^^--
+  |     | |
+  |     | explicit destructor calls not allowed
+  |     help: consider using `drop` function: `drop(d)`
+  ```
+
++ 但可以调用标准库的`std::mem::drop`函数，来提前`drop`值
+
+  ```rust
+  let c = CustomSmartPointer {
+      data: String::from("my stuff"),
+  };
+  drop(c);
+  let d = CustomSmartPointer {
+      data: String::from("other stuff"),
+  };
+  println!("CustomSmartPointer created");
+  ```
+
+  ```shell
+  Dropping CustomSmartPointer with date `my stuff`!
+  CustomSmartPointer created
+  Dropping CustomSmartPointer with date `other stuff`!
+  ```
+
+
+
+### 15.4 基于引用计数的智能指针 Rc\<T>
+
++ 有时，一个值会有多个所有者
+
+  ![rc](./assets/rc.png)
+
++ 为了支持多重所有权：`Rc<T>`
+
+  + `reference counting`（引用计数）
+  + 追踪所有到值的引用
+  + 0 个引用：该值可以被清理掉
+
+#### Rc\<T> 使用场景
+
++ 需要在`heap`上分配数据，这些数据被程序的多个部分读取（只读），但在编译时无法确定哪个部分最后使用完这些数据
++ `Rc<T>`只能用于单线程场景
+
+#### 15.4.1 使用 Rc\<T> 共享数据
+
++ `Rc<T>`不在预导入模块（prelude）
+
++ `Rc::clone(&a)`函数：增加引用计数
+
++ `Rc::strong_count(&a)`：获得引用计数
+
+  + 还有`Rc::weak_count`函数
+
++ `Rc<T>`通过**不可变引用**，使只读数据可以在程序的不同部分之间共享
+
++ 例子
+
+  + 两个 List 共享另一个 List 的所有权
+
+    ![shared_data](./assets/shared_data.png)
+
+  ```rust
+  enum List {
+      Cons(i32, Rc<List>),
+      Nil,
+  }
+  
+  use crate::List::{Cons, Nil};
+  use std::rc::Rc;
+  
+  fn main() {
+      let a = Rc::new(Cons(5, Rc::new(Cons(10, Rc::new(Nil)))));
+      let b = Cons(3, Rc::clone(&a));
+      let c = Cons(4, Rc::clone(&a));
+  }
+  ```
+
+  这里调用a.clone()而不是Rc::clone(&a)来实现同样的效果，但Rust的惯例是在此场景下使用Rc::clone，因为Rc::clone不会执行数据的深度拷贝操作，这与绝大多数类型实现的clone方法明显不同。调用Rc::clone只会增加引用计数，而这不会花费太多时间。但与此相对的是，深度拷贝则常常需要花费大量时间来搬运数据。因此，在引用计数上调用Rc::clone可以让开发者一眼就区分开“深度拷贝”与“增加引用计数”这两种完全不同的克隆行为。当你需要定位存在性能问题的代码时，就可以忽略Rc::clone而只需要审查剩余的深度拷贝克隆行为即可。
+
+#### 15.4.2 克隆 Rc\<T> 会增加引用计数
+
+```rust
+enum List {
+    Cons(i32, Rc<List>),
+    Nil,
+}
+
+use crate::List::{Cons, Nil};
+use std::rc::Rc;
+
+fn main() {
+    let a = Rc::new(Cons(5, Rc::new(Cons(10, Rc::new(Nil)))));
+    println!("count after creating a = {}", Rc::strong_count(&a));
+
+    let b = Cons(3, Rc::clone(&a));
+    println!("count after creating b = {}", Rc::strong_count(&a));
+
+    {
+        let c = Cons(4, Rc::clone(&a));
+        println!("count after creating c = {}", Rc::strong_count(&a));
+
+    }
+    println!("count after c goes out of scope = {}", Rc::strong_count(&a));
+    
+}
+```
+
+```shell
+count after creating a = 1
+count after creating b = 2
+count after creating c = 3
+count after c goes out of scope = 2
+```
+
+
+
+### 15.5 RefCell\<T> 和内部可变性模式
+
+#### 15.5.1 内部可变性（interior mutability）
+
++ 内部可变性是 Rust 的设计模式之一
++ 它允许你在只持有不可变引用的前提下对数据进行修改
+  + 数据结构中使用了`unsafe`代码来绕过 Rust 正常的可变性和借用规则
+
+#### 15.5.2 RefCell\<T>
+
++ 与`Rc<T>`不同，`RefCell<T>`类型代表了其持有数据的唯一所有权
++ 与`Rc<T>`类似，`RefCell<T>`只能用于单线程场景
+
+##### RefCell\<T> 与 Box\<T> 的区别
+
+|           Box\<T>            |       RefCell\<T>        |
+| :--------------------------: | :----------------------: |
+| 编译阶段强制代码遵守借用规则 | 只会在运行时检查借用规则 |
+|         否则出现错误         |      否则触发 panic      |
+
+##### 借用规则在不同阶段进行检查的比较
+
+|        编译阶段        |                          运行时                          |
+| :--------------------: | :------------------------------------------------------: |
+|      尽早暴露问题      |               问题暴露延后，甚至到生产环境               |
+|   没有任何运行时开销   |                因借用计数产生些许性能损失                |
+| 对大多数场景时最佳选择 | 实现某些特定场景下的内存安全（不可变环境中修改自身数据） |
+|    Rust 的默认行为     |                                                          |
+
+##### 选择 Box\<T>、Rc\<T>、RefCell\<T> 的依据
+
+|                  |            Box\<T>             |          Rc\<T>          |          RefCell\<T>           |
+| :--------------: | :----------------------------: | :----------------------: | :----------------------------: |
+| 同一数据的所有者 |              一个              |           多个           |              一个              |
+| 可变性、借用检查 | 可变、不可变借用（编译时检查） | 不可变借用（编译时检查） | 可变、不可变借用（运行时检查） |
+
+其中，即便`RefCell<T>`本身不可变，但仍能修改其中存储的值
+
+#### 15.5.3 内部可变性：可变的借用一个不可变的值
+
++ 借用规则的一个推论是，你无法可变地借用一个不可变的值
+
+     ```rust
+     fn main() {
+         let x = 5;
+         let y = &mut x;
+     }
+     ```
+
+    ```shell
+    error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
+     --> src/main.rs:3:13
+      |
+    2 |     let x = 5;
+      |         - help: consider changing this to be mutable: `mut x`
+    3 |     let y = &mut x;
+      |  
+    ```
+    
++ 
 
 
 
