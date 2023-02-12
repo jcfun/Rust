@@ -6999,7 +6999,7 @@ fn main() {
   struct MyBox<T>(T);
   
   impl<T> MyBox<T> {
-      fn new(x:T) -> MyBox<T> {
+      fn new(x: T) -> MyBox<T> {
           MyBox(x)
       }
   }
@@ -7262,13 +7262,7 @@ count after c goes out of scope = 2
 
 ### 15.5 RefCell\<T> 和内部可变性模式
 
-#### 15.5.1 内部可变性（interior mutability）
-
-+ 内部可变性是 Rust 的设计模式之一
-+ 它允许你在只持有不可变引用的前提下对数据进行修改
-  + 数据结构中使用了`unsafe`代码来绕过 Rust 正常的可变性和借用规则
-
-#### 15.5.2 RefCell\<T>
+#### 15.5.1 RefCell\<T>：在运行时检查借用规则
 
 + 与`Rc<T>`不同，`RefCell<T>`类型代表了其持有数据的唯一所有权
 + 与`Rc<T>`类似，`RefCell<T>`只能用于单线程场景
@@ -7298,7 +7292,7 @@ count after c goes out of scope = 2
 
 其中，即便`RefCell<T>`本身不可变，但仍能修改其中存储的值
 
-#### 15.5.3 内部可变性：可变的借用一个不可变的值
+#### 15.5.2 内部可变性（interior mutability）：可变的借用一个不可变的值
 
 + 借用规则的一个推论是，你无法可变地借用一个不可变的值
 
@@ -7309,17 +7303,155 @@ count after c goes out of scope = 2
      }
      ```
 
-    ```shell
-    error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
-     --> src/main.rs:3:13
-      |
-    2 |     let x = 5;
-      |         - help: consider changing this to be mutable: `mut x`
-    3 |     let y = &mut x;
-      |  
-    ```
-    
-+ 
+     ```shell
+     error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
+      --> src/main.rs:3:13
+       |
+     2 |     let x = 5;
+       |         - help: consider changing this to be mutable: `mut x`
+     3 |     let y = &mut x;
+       |  
+     ```
+
+     然而，在某些特定情况下，我们也会需要一个值在对外保持不可变性的同时能够在方法内部修改自身。除了这个值本身的方法，其余的代码则依然不能修改这个值。使用`RefCell<T>`就是获得这种内部可变性的一种方法。不过，`RefCell<T>`并没有完全绕开借用规则：我们虽然使用内部可变性通过了编译阶段的借用检查，但借用检查的工作仅仅是被延后到了运行阶段。如果你违反了借用规则，那么就会得到一个`panic! `而不再只是编译时的错误。
+
++ 内部可变性是 Rust 的设计模式之一
+
++ 它允许你在只持有不可变引用的前提下对数据进行修改
+
+     + 数据结构中使用了`unsafe`代码来绕过 Rust 正常的可变性和借用规则
+
+     ```rust
+     pub trait Messenger {
+         fn send(&self, msg: &str);
+     }
+     
+     pub struct LimitTracker<'a, T: 'a + Messenger> {
+         messenger: &'a T,
+         value: usize,
+         max: usize,
+     }
+     
+     impl<'a, T: Messenger> LimitTracker<'a, T>
+     where
+         T: Messenger,
+     {
+         pub fn new(messenger: &T, max: usize) -> LimitTracker<T> {
+             LimitTracker {
+                 messenger,
+                 value: 0,
+                 max,
+             }
+         }
+     
+         pub fn set_value(&mut self, value: usize) {
+             self.value = value;
+             
+             let percentage_of_max = self.value as f64 / self.max as f64;
+             if percentage_of_max >= 1.0 {
+                 self.messenger.send("Error: You are over your quota!");
+             } else if percentage_of_max >= 0.9 {
+                 self.messenger.send("Urgent warning: You've used up over 90% of your quota!");
+             } else if percentage_of_max >= 0.75 {
+                 self.messenger.send("Warning: You've used up over 75% of your quota!");
+             }
+         }
+     }
+     
+     #[cfg(test)]
+     mod tests {
+         use super::*;
+         use std::cell::RefCell;
+     
+         struct MockMessenger {
+             sent_messages: RefCell<Vec<String>>,
+         }
+     
+         impl MockMessenger {
+             fn new() -> MockMessenger {
+                 MockMessenger {
+                     sent_messages: RefCell::new(vec![]),
+                 }
+             }
+         }
+     
+         impl Messenger for MockMessenger {
+             fn send(&self, message: &str) {
+                 self.sent_messages.borrow_mut().push(String::from(message));
+             }
+         }
+     
+         #[test]
+         fn it_sends_an_over_75_percent_warning_message() {
+             let mock_messenger = MockMessenger::new();
+             let mut limit_tracker = LimitTracker::new(&mock_messenger, 100);
+     
+             limit_tracker.set_value(80);
+             assert_eq!(mock_messenger.sent_messages.borrow().len(), 1);
+         }
+     
+     }
+     ```
+
+##### 使用 RefCell\<T> 在运行时记录借用信息
+
++ 两个方法（安全接口）
+  + borrow 方法
+    + 返回智能指针`Ref<T>`，它实现了`Deref`
+  + borrow_mut 方法
+    + 返回智能指针`RefMut<T>`，它实现了`Deref`
+
+##### 使用 RefCell\<T> 在运行时记录借用信息
+
++ `RefCell<T>`会记录当前存在多少个活跃的`Ref<T>`和`RefMut<T>`智能指针
+  + 每次调用 borrow：不可变借用计数加 1
+    + 任何一个`Ref<T>`的值离开作用域被释放时：不可变借用计数减 1
+  + 每次调用 borrow_mut：可变借用计数加 1
+    + 任何一个`RefMut<T>`的值离开作用域被释放时：可变借用计数减 1
++ Rust 以此技术来维护借用检查规则
+  + 任何一个给定时间里，只允许拥有多个不可变借用或一个可变借用
+
+#### 15.5.3 将 Rc\<T> 和 RefCell\<T> 结合使用来实现一个拥有多重所有权的可变数据
+
++ 将`RefCell<T>`和`Rc<T>`结合使用是一种很常见的用法。`Rc<T>`允许多个所有者持有同一数据，但只能提供针对数据的不可变访问。如果我们在`Rc<T>`内存储了`RefCell<T>`，那么就可以定义出拥有多个所有者且能够进行修改的值了
+
+  ```rust
+  use std::{rc::Rc, cell::RefCell};
+  
+  #[derive(Debug)]
+  enum List {
+      Cons(Rc<RefCell<i32>>, Rc<List>),
+      Nil,
+  }
+  
+  use crate::List::{Cons, Nil};
+  
+  fn main() {
+      
+      let value = Rc::new(RefCell::new(5));
+      let a = Rc::new(Cons(Rc::clone(&value), Rc::new(Nil)));
+      let b = Cons(Rc::new(RefCell::new(6)), Rc::clone(&a));
+      let c = Cons(Rc::new(RefCell::new(10)), Rc::clone(&a));
+  
+      *value.borrow_mut() += 10;
+  
+      println!("a after = {:?}", a);
+      println!("b after = {:?}", b);
+      println!("c after = {:?}", c);
+      
+  }
+  ```
+
+##### 其它可实现内部可变性的类型
+
++ `Cell<T>`：通过复制来访问数据
++ `Mutex<T>`：用于实现跨线程情形下的内部可变性模式
+
+
+
+
+
+
 
 
 
