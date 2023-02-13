@@ -7634,9 +7634,244 @@ fn main() {
   + 参数：一个闭包（在新线程里运行的代码）
 
   ```rust
+  use std::thread;
+  use std::time::Duration;
+  
+  fn main() {
+      thread::spawn(|| {
+          for i in 1..10 {
+              println!("hi number {} from the spawned thread!", i);
+              thread::sleep(Duration::from_millis(1));
+          }
+      });
+  
+      for i in 1..5 {
+          println!("hi number {} from the main thread!", i);
+          thread::sleep(Duration::from_millis(1));
+      }
+  }
+  ```
+  
+
+#### 16.1.3 通过 Join Handle 来等待所有线程的完成
+
++ `thread::spawn`函数的返回值类型是`JoinHandle`
+
++ `JoinHandle`持有值的所有权
+
+  + 通过调用`join`方法，可以等待对应的其它线程的完成
+
++ `join`方法：调用`handle`的`join`方法会阻止当前运行线程的执行，直到`handle`所表示的这些线程终结
+
+  ```rust
+  use std::thread;
+  use std::time::Duration;
+  
+  fn main() {
+      let handle = thread::spawn(|| {
+          for i in 1..10 {
+              println!("hi number {} from the spawned thread!", i);
+              thread::sleep(Duration::from_millis(1));
+          }
+      });
+  	// handle.join().unwrap()
+      for i in 1..5 {
+          println!("hi number {} from the main thread!", i);
+          thread::sleep(Duration::from_millis(1));
+      }
+  
+      handle.join().unwrap();
+  }
   ```
 
+#### 16.1.4 使用 move 闭包
+
++ `move`闭包通常和`thread::spawn`函数一起使用，它允许你使用其它线程的数据
+
++ 创建线程时，把值的所有权从一个线程转移到另一个线程
+
+  ```rust
+  use std::thread;
   
+  fn main() {
+      let v = vec![1, 2, 3];
+      let handle = thread::spawn(move || {
+          println!("Here's a vector: {:?}", v);
+      });
+  	// drop(v);
+      handle.join().unwrap();
+  }
+  ```
+
+  Rust在推导 出如何捕获v后决定让闭包借用v，因为闭包中的println! 只需要使用v的引用。但这就出现了一个问题：由于Rust不知道新线程会运行多久，所以它无法确定v的引用是否一直有效。
+
+  通过在闭包前添加move关键字，我们会强制闭包获得它所需值的所有权，而不仅仅是基于Rust的推导来获得值的借用。
+
+
+
+### 16.2 使用消息传递来跨线程传递数据
+
+#### 16.2.1 消息传递
+
++ 一种很流行且能保证安全并发的技术就是：消息传递
+  + 线程（或Actor）通过彼此发送消息（数据）来进行通信
++ Go 语言的名言：不要用共享内存来通信，要用通信来共享内存
++ Rust：`Channel`（标准库提供）
+
+##### Channel
+
++ `Channel`包含：发送端、接收端
++ 调用发送端的方法，发送数据
++ 接收端会检查和接收到达的数据
++ 如果发送端、接收端任意一端被丢弃了，那么`Channel`就关闭了
+
+##### 创建 Channel
+
++ 使用`mpsc::channel`函数来创建`Channel`
+
+  + mpsc 表示 multiple producer, single consumer（多个生产者、一个消费者）
+  + 返回一个`tuple`：里面元素分别是发送端、接收端
+
+  ```rust
+  use std::sync::mpsc;
+  use std::thread;
+  
+  fn main() {
+      let (tx, rx) = mpsc::channel();
+  
+      thread::spawn(move || {
+          let val = String::from("hi");
+          tx.send(val).unwrap();
+      });
+  
+      let received = rx.recv().unwrap();
+      println!("Got: {}", received);
+  }
+  ```
+
++ **发送端的 send 方法**
+
+  + 参数：想要发送的数据
+  + 返回：`Result<T, E>`
+    + 如果有问题（例如接受端已经被丢弃），就返回一个错误
+
++ **接收端的方法**
+
+  + `recv`方法：阻塞当前线程执行，知道`Channel`中有值被送来
+    + 一旦有值收到，就返回`Result<T, E>`
+    + 当发送端关闭，就会收到一个错误
+  + `try_recv`方法：不会阻塞
+    + 立即返回`Result<T, E>`
+      + 有数据到达，返回Ok，里面包含着数据
+      + 否则，返回错误
+    + 通常会使用循环调用来检查`try_recv`的结果
+
+#### 16.2.2 Channel 和所有权转移
+
++ 所有权在消息传递中非常重要：能帮你编写安全、并发的代码
+
+  ```rust
+  use std::sync::mpsc;
+  use std::thread;
+  
+  fn main() {
+      let (tx, rx) = mpsc::channel();
+  
+      thread::spawn(move || {
+          let val = String::from("hi");
+          tx.send(val).unwrap();
+          println!("val is {}", val); // value borrowed here after move
+      });
+  
+      let received = rx.recv().unwrap();
+      println!("Got: {}", received);
+  }
+  ```
+
+#### 16.2.3 发送多个值并观察接收者的等待过程
+
+```rust
+use std::sync::mpsc;
+use std::thread;
+use std::time::Duration;
+
+fn main() {
+    let (tx, rx) = mpsc::channel();
+
+    thread::spawn(move || {
+        let vals = vec![
+            String::from("hi"),
+            String::from("from"),
+            String::from("the"),
+            String::from("thread"),
+        ];
+
+        for val in vals {
+            tx.send(val).unwrap();
+            thread::sleep(Duration::from_millis(200));
+        }
+    });
+
+    for received in rx {
+        println!("Got: {}", received);
+    }
+}
+```
+
+这段代码在新线程中创建了一个用于存储字符串的动态数组。我们会迭代动态数组来逐个发送其中的字符串，并在每次发送后调用Duration值为1秒的thread::sleep函数来稍作暂停。
+
+在主线程中，我们会将rx视作迭代器，而不再显式地调用recv函数。迭代中的代码会打印出每个接收到的值，并在通道关闭时退出循环。
+
+我们并没有在主线程的for循环中执行暂停或延迟指令，这也就表明主线程确实是在等待接收新线程中传递过来的值。
+
+#### 16.2.4 通过克隆创建多个发送者
+
+```rust
+use std::sync::mpsc;
+use std::thread;
+use std::time::Duration;
+
+fn main() {
+    let (tx, rx) = mpsc::channel();
+
+    let tx1 = mpsc::Sender::clone(&tx);
+    thread::spawn(move || {
+        let vals = vec![
+            String::from("1: hi"),
+            String::from("1: from"),
+            String::from("1: the"),
+            String::from("1: thread"),
+        ];
+
+        for val in vals {
+            tx1.send(val).unwrap();
+            thread::sleep(Duration::from_millis(200));
+        }
+    });
+
+    thread::spawn(move || {
+        let vals = vec![
+            String::from("hi"),
+            String::from("from"),
+            String::from("the"),
+            String::from("thread"),
+        ];
+
+        for val in vals {
+            tx.send(val).unwrap();
+            thread::sleep(Duration::from_millis(200));
+        }
+    });
+
+    for received in rx {
+        println!("Got: {}", received);
+    }
+}
+```
+
+我们在创建第一个新线程前调用了通道发送端的clone方法，这会为我们生成可以传入首个新线程的发送端句柄。随后，我们又将原始的通道发送端传入第二个新线程。这两个线程会各自发送不同的消息到通道的接收端。
+
+
 
 
 
