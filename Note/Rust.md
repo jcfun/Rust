@@ -7447,6 +7447,197 @@ count after c goes out of scope = 2
 + `Cell<T>`：通过复制来访问数据
 + `Mutex<T>`：用于实现跨线程情形下的内部可变性模式
 
+### 15.6 循环引用会造成内存泄漏
+
++ Rust 的内存安全机制可以保证很难发生内存泄露，但不是不可能
++ 例如使用`Rc<T>`和`RefCell<T>`就可能创造出循环引用，从而发生内存泄漏
+  + 每个项的引用数量不会变成 0，值也不会被处理掉
+
+#### 15.6.1 创建循环引用
+
+```rust
+use crate::List::{Cons, Nil};
+use std::cell::RefCell;
+use std::rc::Rc;
+
+#[derive(Debug)]
+enum List {
+    Cons(i32, RefCell<Rc<List>>),
+    Nil,
+}
+
+impl List {
+    fn tail(&self) -> Option<&RefCell<Rc<List>>> {
+        match self {
+            Cons(_, item) => Some(item),
+            Nil => None,
+        }
+    }
+}
+
+fn main() {
+    
+    let a = Rc::new(Cons(5, RefCell::new(Rc::new(Nil))));
+    
+    println!("a initial rc count = {}", Rc::strong_count(&a));
+    println!("a next item = {:?}", a.tail());
+
+    let b = Rc::new(Cons(10, RefCell::new(Rc::clone(&a))));
+    println!("a rc count after b creation = {}", Rc::strong_count(&b));
+    println!("b initial rc count = {}", Rc::strong_count(&b));
+    println!("b next item = {:?}", b.tail());
+
+    if let Some(link) = a.tail() {
+        *link.borrow_mut() = Rc::clone(&b);
+    }
+
+    println!("b rc count after changing a = {}", Rc::strong_count(&b));
+    println!("a rc count after changing a = {}", Rc::strong_count(&a));
+
+    // it will overflow the stack
+    println!("a next item = {:?}", a.tail());
+
+}
+```
+
+![circular_ref](./assets/circular_ref.png)
+
+假如去除最后一行println! 的注释并再次运行程序，那么Rust会在尝试将这个循环引用打印出来的过程中反复地从a跳转至b，再从b跳转至a；整个程序会一直处于这样的循环中直到发生栈溢出为止。
+
+#### 15.6.2 防止内存泄漏的解决办法
+
++ 依靠开发者来保证，不能依靠 Rust
++ 重新组织数据结构：一些引用来表达所有权，一些引用不表达所有权
+  + 循环引用中的一部分具有所有权关系，另一部分不涉及所有权关系
+  + 而只有所有权关系才影响值的清理
+
+##### 使用 Weak\<T> 代替 Rc\<T> 来避免循环引用
+
++ `Rc::clone`为`Rc<T>`实例的`strong_count`加 1，`Rc<T>`的实例只有在`strong_count`为 0 的时候才会被清理
++ `Rc<T>`实例通过调用`Rc::downgrade`方法可以创建值的`Weak Reference`（弱引用）
+  + 返回的类型是`Weak<T>`（智能指针）
+  + 调用`Rc::downgrade`会为`weak_count`加 1
++ `Rc<T>`使用`weak_count`来追踪存在多少`Weak<T>`
++ `weak_count`不为 0 并不影响`Rc<T>`实例的清理
+
+##### Strong vs Weak
+
++ `Strong Reference`（强引用）是关于如何分享`Rc<T>`实例的所有权
+
++ `Weak Reference`（弱引用）并不表达上述意思
+
++ 使用`Weak Reference`并不会创建循环引用
+
+  + 当`Strong Reference`数量为 0 的时候，`Weak Reference`会自动断开
+
++ 在使用`Weak<T>`前，需保证它指向的值仍然存在
+
+  + 在`Weak<T>`实例上调用`upgrade`方法，返回`Option<Rc<T>>`
+
+  ```rust
+  use std::rc::{Rc, Weak};
+  use std::cell::{RefCell};
+  
+  #[derive(Debug)]
+  struct Node {
+      value: i32,
+      parent: RefCell<Weak<Node>>,
+      children: RefCell<Vec<Rc<Node>>>,
+  }
+  
+  fn main() {
+  
+      let leaf = Rc::new(Node {
+          value: 3,
+          parent: RefCell::new(Weak::new()),
+          children: RefCell::new(vec![]),
+      });
+  
+      println!("leaf parent = {:#?}", leaf.parent.borrow().upgrade());
+  
+      println!(
+          "leaf strong =  {}, weak = {}",
+          Rc::strong_count(&leaf),
+          Rc::weak_count(&leaf),
+      );
+      {
+          let branch = Rc::new(Node {
+              value: 5,
+              parent: RefCell::new(Weak::new()),
+              children: RefCell::new(vec![Rc::clone(&leaf)]),
+          });
+      
+          *leaf.parent.borrow_mut() = Rc::downgrade(&branch);
+  
+          println!(
+              "branch strong =  {}, weak = {}",
+              Rc::strong_count(&branch),
+              Rc::weak_count(&branch),
+          );
+          println!(
+              "leaf strong =  {}, weak = {}",
+              Rc::strong_count(&leaf),
+              Rc::weak_count(&leaf),
+          );
+          println!("leaf parent = {:#?}", leaf.parent.borrow().upgrade());
+      }
+      println!("leaf parent = {:#?}", leaf.parent.borrow().upgrade());
+      println!(
+          "leaf strong =  {}, weak = {}",
+          Rc::strong_count(&leaf),
+          Rc::weak_count(&leaf),
+      );
+  
+  }
+  ```
+
+  
+
+## 16、无畏并发
+
+### 并发
+
++ `Concurrent`：程序的不同部分之间独立的执行
++ `Parallel`：程序的不同部分同时运行
++ Rust 无畏并发（fearless concurrency）：允许你编写没有细微 Bug 的代码，并在不引入新 Bug 的情况下易于重构
++ 注意：本课程中的“并发”泛指`Concurrent`和`Parallel`
+
+### 16.1 使用多线程同时运行代码
+
+#### 16.1.1 进程与线程
+
++ 在大部分操作系统中，代码运行在进程（process）中，操作系统同时管理多个进程
++ 在你的程序里，各独立部分可以同时运行，运行这些独立部分的就是线程（thread）
++ 多线程运行
+  + 提升性能表现
+  + 增加复杂性：无法保障各线程的执行顺序
+
+##### 多线程可导致的问题
+
++ 竞争状态（race condition）：线程以不一致的顺序访问数据或资源
++ 死锁（deadlock）：两个线程彼此等待对方使用完所持有的的资源，线程无法继续
++ 只在某些情况下发生的 Bug，很难可靠地复制现象和修复
+
+##### 实现线程的方式
+
++ 通过调用操作系统的 API 来创建线程：1:1 模型（一个操作系统线程对应一个语言线程）
+  + 需要比较小的运行时
++ 语言自己实现的线程（绿色线程 / green thread）：M : N 模型（M个绿色线程对应着N个系统线程，这里的M与N不必相等）
+  + 需要更大的运行时
++ Rust：需要权衡运行时的支持（除了汇编之外几乎都会有运行时）
++ Rust 标准库仅提供 1:1 模型的线程
+
+#### 16.1.2 使用 spawn 创建新线程
+
++ 通过`therad::spawn`函数可以创建新线程
+
+  + 参数：一个闭包（在新线程里运行的代码）
+
+  ```rust
+  ```
+
+  
+
 
 
 
