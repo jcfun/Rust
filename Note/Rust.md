@@ -8110,7 +8110,231 @@ note: required by a bound in `spawn`
 
 
 
+## 17、Rust 的面向对象编程特性
 
+### 17.1 面向对象语言的特性
+
+#### Rust 是面向对象编程语言吗？
+
++ Rust 受到多种编程范式的影响，包括面向对象
++ 面向对象通常包含以下特性：命名对象、封装、继承
+
+#### 17.1.1 对象包含数据和行为
+
++ “设计模式四人帮”在《设计模式》中给出了面向对象的定义
+  + 面向对象的程序由对象组成
+  + 对象封装了数据和操作这些数据的过程，这些过程通常被称为方法或操作
++ 基于此定义：Rust 是面向对象的
+  + `struct`、`enum`包含数据
+  + `impl`块为之提供了方法
+  + 但带有方法的`struct`、`enum`并没有被称之为对象
+
+#### 17.1.2 封装
+
++ 封装：调用对象外部的代码无法直接访问对象内部的实现细节，唯一可以与对象进行交互的方法就是通过它公开的API
+
++ Rust：`pub`关键字
+
+  ```rust
+  pub struct AveragedCollection {
+      list: Vec<i32>,
+      average: f64,
+  }
+  
+  impl AveragedCollection {
+      pub fn add(&mut self, value: i32) {
+          self.list.push(value);
+          self.update_average();
+      }
+  
+      pub fn remove(&mut self) -> Option<i32> {
+          let result = self.list.pop();
+          match result {
+              Some(value) => {
+                  self.update_average();
+                  Some(value)
+              },
+              None => None,
+          }
+      }
+  
+      pub fn average(&self) -> f64 {
+          self.average
+      }
+  
+      fn update_average(&mut self) {
+          let total: i32 = self.list.iter().sum();
+          self.average = total as f64 / self.list.len() as f64;
+      }
+  }
+  ```
+
+#### 17.1.3 继承：类型系统和代码共享的机制
+
++ 继承：使对象可以沿用另外一个对象的数据和行为，且无需重复定义相关代码
++ Rust：没有继承
++ 使用继承的原因
+  + 代码复用
+    + Rust：默认`trait`方法来进行代码共享
+  + 多态
+    + Rust：泛型和`trait`约束（限定参数化多态 / bounded parametric polymorphism）
++ 很多新语言都再不使用继承作为内置的程序设计方案了
+  + 因为使用继承意味着你会在无意间共享出比所需内容更多的代码。子类并不应该总是共享父类的所有特性，但使用继承机制却会始终产生这样的结果，进而使程序设计缺乏灵活性
+
+
+
+### 17.2 使用 trait 对象来存储不同类型的值
+
+#### 一个需求
+
++ 创建一个 GUI 工具
+  + 它会遍历某个元素的列表，依次调用元素的 draw 方法进行绘制
+  + 例如：Button、TextField等元素
++ 在面向对象的语言里
+  + 定义一个 Component 父类，里面定义了 draw 方法
+  + 定义 Button、TextField 等类，继承于 Component 类
+
+#### 17.2.1 为共有行为定义一个 trait
+
++ Rust 避免将`struct`或`enum`称为对象，因为它们与`impl`块是分开的
+
++ `trait`对象有些类似于其它语言中的对象
+
+  + 它们某种程度上组合了数据与行为
+
++ `trait`对象与传统对象不同的地方
+
+  + 无法为`trait`对象添加数据
+
++ `trait`对象被专门用于抽象某些共有行为，它没其它语言中的对象那么通用
+
+  **src/lib.rs**
+
+  ```rust
+  pub trait Draw {
+      fn draw(&self);
+  }
+  
+  pub struct Screen {
+      pub components: Vec<Box<dyn Draw>>,
+  }
+  
+  impl Screen {
+      pub fn run(&self) {
+          for component in self.components.iter() {
+              component.draw();
+          }
+      }
+  }
+  
+  // 泛型实现
+  pub struct Screen1<T: Draw> {
+      pub components: Vec<T>,
+  }
+  
+  impl<T> Screen1<T>
+  where
+      T: Draw,
+  {
+      pub fn run(&self) {
+          for component in self.components.iter() {
+              component.draw()
+          }
+      }
+  }
+  // 泛型实现
+  
+  
+  pub struct Button {
+      pub width: u32,
+      pub height: u32,
+      pub label: String,
+  }
+  
+  impl Draw for Button {
+      fn draw(&self) {
+          // 绘制一个按钮
+      }
+  }
+  ```
+
+  **src/main.rs**
+
+  ```rust
+  use oop_demo::{Draw, Screen, Button};
+  
+  struct SelectBox {
+      width: u32,
+      height: u32,
+      options: Vec<String>,
+  }
+  
+  impl Draw for SelectBox {
+      fn draw(&self) {
+          // 绘制一个选择框
+      }
+  }
+  
+  fn main() {
+      let screen = Screen {
+          components: vec![
+              Box::new(SelectBox {
+                  width: 75,
+                  height: 10,
+                  options: vec![
+                      String::from("Yes"),
+                      String::from("Maybe"),
+                      String::from("No"),
+                  ],
+              }),
+              Box::new(Button {
+                  width: 50,
+                  height: 10,
+                  label: String::from("OK"),
+              }),
+          ],
+      };
+  
+      screen.run();
+  }
+  ```
+
+#### 17.2.2 Trait 对象执行的是动态派发
+
++ 将 trait 约束作用于泛型时，Rust 编译器会执行单态化
+  + 编译器会为我们用来替换泛型类型参数的每一个具体类型生成对应函数和方法的非泛型实现
++ 通过单态化生成的代码会执行静态派发（static dispatch），在编译过程中确定调用的具体方法
++ 动态派发（dynamic dispatch）
+  + 无法在编译过程中确定你调用的是哪一种方法
+  + 编译器会产生额外的代码以便在运行时找出希望调用的方法
++ 使用 trait 对象，会执行动态派发
+  + 产生运行时开销
+  + 阻止编译器内联方法代码，使得部分优化操作无法进行
+
+#### 17.2.3 Trait 对象必须保证对象安全
+
++ 只能把满足对象安全（object-safe）的 trait 转化为 trait 对象
+
++ Rust 采用一系列规则来判定某个对象是否安全，只需记住两条
+
+  + 方法的返回类型不是 Self
+  + 方法中不包含任何泛型类型参数
+
+  ```rust
+  pub trait Draw {
+      fn draw(&self);
+  }
+  
+  pub trait Clone {
+      fn clone(&self) -> Self;
+  }
+  
+  pub struct Screen {
+      pub components: Vec<Box<dyn Clone>>, // Clone` cannot be made into an object
+  }
+  ```
+
+  
 
 
 
