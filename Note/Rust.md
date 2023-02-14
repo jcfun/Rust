@@ -7873,6 +7873,247 @@ fn main() {
 
 
 
+### 16.3 共享状态的并发
+
++ Go 语言的名言：不要用共享内存来通信，要用通信来共享内存
++ Rust 支持通过共享状态来实现并发
++ `Channel`类似单所有权：一旦将值的所有权转移至`Channel`，就无法使用它了
++ 共享内存并发类似多所有权：多个线程可以同时访问同一块内存
+
+#### 16.3.1 使用互斥体（Mutex / Mutual Exclusion）来每次只允许一个线程来访问数据
+
++ Mutex是 Mutual Exclusion的简写
++ 在同一时刻，Mutex只允许一个线程来访问某些数据
++ 想要访问数据
+  + 线程必须首先获取互斥锁（lock）
+    + lock 数据结构是 mutex 的一部分，它能跟踪谁对数据拥有独占访问权
+  + mutex通常被描述为：通过锁定系统来保护它所持有的数据
+
+##### Mutex 的两条规则
+
++ 在使用数据之前，必须尝试获取锁（lock）
++ 使用完 Mutex 所保护的数据，必须对数据进行解锁，以便其它线程可以获取锁
+
+##### Mutex\<T> 的 API
+
++ 通过`Mutex::new(数据)`来创建`Mutex<T>`
+
+  + `Mutex<T>`是一个智能指针
+
++ 访问数据前，通过`lock`方法来获取锁
+
+  + 会阻塞当前线程的执行
+  + `lock`可能会失败
+  + 返回的是`MutexGuard`（智能指针，实现了`Deref`和`Drop`）
+
+  ```rust
+  use std::sync::Mutex;
+  
+  fn main() {
+      let m = Mutex::new(5);
+  
+      {
+          let mut num = m.lock().unwrap();
+          *num = 6;
+      }
+  
+      println!("m = {:?}", m);
+  }
+  ```
+
+##### 多线程共享 Mutex\<T>
+
+```rust
+use std::{sync::Mutex, thread};
+
+fn main() {
+
+    let counter = Mutex::new(0);
+    let mut handles = vec![];
+
+    for _ in 0..10 {
+        let handle = thread::spawn(move || {
+            let mut num = counter.lock().unwrap();
+
+            * num += 1;
+        });
+        handles.push(handle);
+    }
+
+    for handle in handles {
+        handle.join().unwrap();
+    }
+
+    println!("Result: {}", *counter.lock().unwrap());
+
+}
+```
+
+```shell
+error[E0382]: use of moved value: `counter`
+  --> src/main.rs:24:36
+   |
+20 |     let counter = Mutex::new(0);
+   |         ------- move occurs because `counter` has type `Mutex<i32>`, which does not implement the `Copy` trait
+...
+24 |         let handle = thread::spawn(move || {
+   |                                    ^^^^^^^ value moved into closure here, in previous iteration of loop
+25 |             let mut num = counter.lock().unwrap();
+   |                           ------- use occurs due to use in closure
+```
+
+错误提示信息指出，counter被移动到了handle指代的线程中。而这一移动行为阻止了我们在第二个线程中调用lock来再次捕获counter。 Rust提醒我们不应该将counter的所有权移动到多个线程中。
+
+##### 多线程与多重所有权
+
+```rust
+use std::{sync::Mutex, thread, rc::Rc};
+
+fn main() {
+
+    let counter = Rc::new(Mutex::new(0));
+    let mut handles = vec![];
+
+    for _ in 0..10 {
+        let counter = Rc::clone(&counter);
+        let handle = thread::spawn(move || {
+            let mut num = counter.lock().unwrap();
+
+            * num += 1;
+        });
+        handles.push(handle);
+    }
+
+    for handle in handles {
+        handle.join().unwrap();
+    }
+
+    println!("Result: {}", *counter.lock().unwrap());
+
+}
+```
+
+这里我们借助于智能指针Rc<T>提供的引用计数为单个值赋予了多个所有者，但是却有另外的问题。
+
+```shell
+error[E0277]: `Rc<Mutex<i32>>` cannot be sent between threads safely
+   --> src/main.rs:25:36
+    |
+25  |           let handle = thread::spawn(move || {
+    |                        ------------- ^------
+    |                        |             |
+    |  ______________________|_____________within this `[closure@src/main.rs:25:36: 25:43]`
+    | |                      |
+    | |                      required by a bound introduced by this call
+26  | |             let mut num = counter.lock().unwrap();
+27  | |
+28  | |             * num += 1;
+29  | |         });
+    | |_________^ `Rc<Mutex<i32>>` cannot be sent between threads safely
+    |
+    = help: within `[closure@src/main.rs:25:36: 25:43]`, the trait `Send` is not implemented for `Rc<Mutex<i32>>`
+note: required because it's used within this closure
+   --> src/main.rs:25:36
+    |
+25  |         let handle = thread::spawn(move || {
+    |                                    ^^^^^^^
+note: required by a bound in `spawn`
+   --> /home/urain/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/std/src/thread/mod.rs:662:8
+    |
+662 |     F: Send + 'static,
+    |        ^^^^ required by this bound in `spawn`
+```
+
+这里的重点在于第一段内嵌的错误：`std::rc::Rc<std::sync::Mutex<i32>>` cannot be sent between threads safely。这意味着我们新创建的`std::rc:: Rc<std:: sync::Mutex<i32>>`类型无法安全地在线程间传递。这个错误的原因被指明在随后的错误描述中：the trait `Send` is not implemented for `Rc<Mutex<i32>>`，该类型不满足trait约束Send。
+
+不幸的是，`Rc<T>`在跨线程使用时并不安全。当`Rc<T>`管理引用计数时，它会在每次调用clone的过程中增加引用计数，并在克隆出的实例被丢弃时减少引用计数，但它并没有使用任何并发原语来保证修改计数的过程不会被另一个线程所打断。这极有可能导致计数错误并产生诡异的bug，比如内存泄漏或值在使用时被莫名其妙地提前释放。我们需要的是一个行为与`Rc<T>`一致，且能够保证线程安全的引用计数类型。
+
+##### 使用 Arc\<T>来进行原子引用计数（Atomically Reference Counted）
+
++ `Arc<T>`和`Rc<T>`类似，它可以用于并发情景
+
+  + A：atomic，原子的
+
++ 为什么所有的基础类型都不是原子的，为什么标准库类型不默认使用`Arc<T>`？
+
+  + 需要性能作为代价
+
++ `Arc<T>`和`Rc<T>`的 API 是相同的
+
+  ```rust
+  use std::{sync::{Mutex, Arc}, thread};
+  
+  fn main() {
+  
+      let counter = Arc::new(Mutex::new(0));
+      let mut handles = vec![];
+  
+      for _ in 0..10 {
+          let counter = Arc::clone(&counter);
+          let handle = thread::spawn(move || {
+              let mut num = counter.lock().unwrap();
+  
+              * num += 1;
+          });
+          handles.push(handle);
+      }
+  
+      for handle in handles {
+          handle.join().unwrap();
+      }
+  
+      println!("Result: {}", *counter.lock().unwrap());
+  
+  }
+  ```
+
+#### 16.3.2 RefCell\<T> / Rc\<T> vs Mutex\<T> / Arc\<T>
+
++ `Mutex<T>`提供了内部可变性，和 Cell 家族一样
++ 我们可以使用`RefCell<T>`来改变`Rc<T>`里面的内容
++ 我们可以使用`Mutex<T>`来改变`Arc<T>`里面的内容
++ 注意：`Mutex<T>`有死锁的风险
+
+
+
+### 16.4 使用Sync trait和Send trait对并发进行扩展
+
+#### Send 和 Sync trait
+
++ Rust 语言的并发特性较少，目前讲的并发特性都来自标准库（而不是语言本身）
++ 无需局限于标准库的并发，可以自己实现并发
++ 但在 Rust 中有两个并发概念
+  + `std::marker::Sync` 和 `std::marker::Send`这两个 trait
+
+#### 16.4.1 Send：允许线程间转移所有权
+
++ 实现`Send trait`的类型可以在线程间转移所有权
++ Rust 中几乎所有的类型都实现了 Send
+  + 但`Rc<T>`没有实现 Send，它只适用于单线程情景
++ 任何完全由 Send 类型组成的复合类型也被标记为 Send
++ 除了原始指针之外，几乎所有的基础类型都实现了 Send
+
+#### 16.4.2 Sync：允许从多线程访问
+
++ 实现`Sync`类型可以安全的被多个线程引用
++ 也就是说：如果`T`是`Sync`，那么`&T`就是 Send
+  + 引用可以被安全的送往另一个线程
++ 基础类型都是`Sync`
++ 完全由`Sync`类型组成的类型也是`Sync`
+  + 但`Rc<T>`不是`Sync`的
+  + `RefCell<T>`和`Cell<T>`家族也不是`Sync`的
+  + `Mutex<T>`是`Sync`的
+
+#### 16.4.3 手动来实现 Send 和 Sync 是不安全的
+
+手动实现这些trait涉及使用特殊的不安全Rust代码。当你构建的自定义并发类型包含了没有实现Send或Sync的类型时，你必须要非常谨慎地确保设计能够满足线程间的安全性要求。
+
+
+
+
+
+
+
 
 
 
