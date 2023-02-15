@@ -8330,7 +8330,7 @@ note: required by a bound in `spawn`
   }
   
   pub struct Screen {
-      pub components: Vec<Box<dyn Clone>>, // Clone` cannot be made into an object
+      pub components: Vec<Box<dyn Clone>>, // Clone cannot be made into an object
   }
   ```
 

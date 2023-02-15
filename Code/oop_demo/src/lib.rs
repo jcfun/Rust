@@ -1,3 +1,11 @@
+/*
+ * @Author: jc-fun urainstar@gmail.com
+ * @Date: 2023-02-15 08:38:00
+ * @LastEditors: jc-fun urainstar@gmail.com
+ * @LastEditTime: 2023-02-15 12:09:28
+ * @FilePath: /oop_demo/src/lib.rs
+ * @Description: 
+ */
 // pub struct AveragedCollection {
 //     list: Vec<i32>,
 //     average: f64,
@@ -29,7 +37,6 @@
 //         self.average = total as f64 / self.list.len() as f64;
 //     }
 // }
-
 
 // pub trait Draw {
 //     fn draw(&self);
@@ -64,7 +71,6 @@
 // }
 // // 泛型实现
 
-
 // pub struct Button {
 //     pub width: u32,
 //     pub height: u32,
@@ -79,14 +85,14 @@
 
 
 
-pub trait Draw {
-    fn draw(&self);
-}
+// pub trait Draw {
+//     fn draw(&self);
+// }
 
-pub trait Clone {
-    fn clone(&self) -> Self;
-}
+// pub trait Clone {
+//     fn clone(&self) -> Self;
+// }
 
-pub struct Screen {
-    pub components: Vec<Box<dyn Clone>>,
-}
+// pub struct Screen {
+//     // pub components: Vec<Box<dyn Clone>>,
+// }
