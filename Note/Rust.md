@@ -7,7 +7,7 @@ println!("hello world") // 打印文本
 ```
 
 + rust的缩进是4个空格，而不是tab
-+ println!是一个rust macro，如果是函数的话，就没有!
++ `println!`是一个rust macro，如果是函数的话，就没有!
 + rust文件命名规则为下划线命名法
 + cargo build [--release]
   + 编译rust源代码并生成可执行文件，--release会在编译时对代码进行优化
