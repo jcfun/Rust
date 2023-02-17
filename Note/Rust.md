@@ -8743,10 +8743,322 @@ match VALUE {
 
 #### 18.3.3 多重模式
 
-+ 在 match 表达式中，使用 | 语法（就是或的意思），可以匹配多种模式
-+ 
++ 在 match 表达式中，使用`| `语法（就是或的意思），可以匹配多种模式
+
+  ```rust
+  fn main() {
+      let x = 1;
+      let y = Some(1);
+  
+      match x {
+          1 | 2 => println!("one or two"),
+          3 => println!("three"),
+          _ => println!("anything"),
+      }
+  
+      match y {
+          Some(1 | 2) => println!("one or two"),
+          Some(3) => println!("three"),
+          _ => println!("anything"),
+      }
+  }
+  ```
+
+#### 18.3.4 使用 ..= 来匹配某个范围的值
+
+```rust
+fn main() {
+    let x = 5;
+    match x {
+        1 ..= 5 => println!("one through five"),
+        _ => println!("something else"),
+    }
+
+    let x = 'c';
+    match x {
+        'a' ..= 'j' => println!("early ASCII letter"),
+        'k' ..= 'z' => println!("late ASCII letter"),
+        _ => println!("something else"),
+    }
+}
+```
+
+#### 18.3.5 解构以分解值
+
++ 可以使用模式来解构 struct、enum、tuple，从而引用这些类型值的不同部分
+
+##### 解构 struct
+
+```rust
+struct Point {
+    x: i32,
+    y: i32,
+}
+fn main() {
+    let p = Point { x: 0, y: 7 };
+
+    let Point { x: a, y: b } = p;
+    assert_eq!(0, a);
+    assert_eq!(7, b);
+
+    let Point { x, y } = p;
+    assert_eq!(0, x);
+    assert_eq!(7, y);
+
+    match p {
+        Point { x, y: 0} => println!("On the x axis at {}", x),
+        Point { x: 0, .. } => println!("other"),
+        Point { x, y } => println!("On neither axis: ({}, {})", x, y),
+    }
+}
+```
+
+##### 解构 enum
+
+```rust
+enum Message {
+    Quit,
+    Move {x: i32, y: i32},
+    Write(String),
+    ChangeColor(i32, i32, i32),
+}
+
+fn main() {
+    let msg = Message::ChangeColor(0, 160, 255);
+
+    match msg {
+        Message::Quit => {
+            println!("The Quit variant has no data to destructure")
+        }
+        Message::Move { x, y } => {
+            println!("Move in the x direction {} and in the y direction {}", x, y)
+        }
+        Message::Write(text) => println!("Text message: {}", text),
+        Message::ChangeColor(r, g, b) => {
+            println!("Change the color to red {}, green {}, and blue {}", r, g, b)
+        }
+    }
+}
+```
+
+##### 解构嵌套的 struct 和 enum
+
+```rust
+enum Color {
+    Rgb(i32, i32, i32),
+    Hsv(i32, i32, i32),
+}
+
+enum Message {
+    Quit,
+    Move {x: i32, y: i32},
+    Write(String),
+    ChangeColor(Color),
+}
+
+fn main() {
+    let msg = Message::ChangeColor(Color::Hsv(0, 160, 255));
+
+    match msg {
+        Message::ChangeColor(Color::Rgb(r, g, b)) => {
+            println!("Change the color to red {}, green {}, and blue {}", r, g, b)
+        }
+        Message::ChangeColor(Color::Hsv(h, s, v)) => {
+            println!("Change the color to hue {}, saturation {}, and value {}", h, s, v)
+        }
+        _ => (),
+    }
+}
+```
+
+##### 解构 struct 和 tuple
+
+```rust
+struct Point {
+    x: i32, 
+    y: i32,
+}
+
+fn main() {
+    let ((feet, inches), Point {x, y}) = ((3, 10), Point { x: 3, y: -10 });
+}
+```
+
+#### 18.3.6 在模式中忽略值
+
++ 有几种方式可以在模式中忽略整个值或部分值
+  + `_`
+  + `_`配合其它模式
+  + 使用以`_`开头的名称
+  + `..`（忽略值的剩余部分）
+
+##### 使用 _ 来忽略整个值
+
+```rust
+fn foo(_: i32, y: i32) {
+    println!("This code only uses the y parameter: {}", y);
+}
+
+fn main() {
+    foo(3, 4);
+}
+```
+
+##### 使用嵌套的 _ 来忽略值的一部分
+
+```rust
+fn main() {
+    let mut setting_value = Some(5);
+    let new_setting_value = Some(10);
+
+    match (setting_value, new_setting_value) {
+        (Some(_), Some(_)) => {
+            println!("Can't overwrite an existing customized value");
+        }
+        _ => {
+            setting_value = new_setting_value;
+        }
+    }
+    println!("setting is {:?}", setting_value);
+
+    let numbers = (2, 4, 8, 16, 32);
+
+    match numbers {
+        (first, _, third, _, fifth) => {
+            println!("Some numbers: {}, {}, {}", first, third, fifth)
+        },
+    }
+}
+```
+
+##### 通过使用 _ 开头命名来忽略未使用的变量
+
+```rust
+fn main() {
+    let _x = 5;
+    let y = 10; // if this is intentional, prefix it with an underscore: `_y`
+
+    let s = Some(String::from("Hello!"));
+
+    if let Some(_s) = s {
+        println!("found a string");
+    }
+
+    println!("{:?}", s); // borrow of partially moved value: `s`
 
 
+    let s = Some(String::from("Hello!"));
+
+    if let Some(_) = s {
+        println!("found a string");
+    }
+
+    println!("{:?}", s);
+}
+```
+
+##### 使用 .. 来忽略值的剩余部分
+
+```rust
+struct Point {
+    x: i32,
+    y: i32,
+    z: i32,
+}
+
+fn main() {
+    let origin = Point { x: 0, y: 0, z: 0 };
+
+    match origin {
+        Point { x, .. } => println!("x is {}", x),
+    }
+
+    let numbers = (2, 4, 8, 16, 32);
+
+    match numbers {
+        (first, .., last) => {
+            println!("Some numbers: {}, {}", first, last);
+        },
+    }
+
+    match numbers {
+        (.., second, ..) => { // can only be used once per tuple pattern
+            println!("Some numbers: {}", second,)
+        }
+    }
+}
+```
+
+#### 18.3.7 使用 match 守卫来提供额外的条件
+
++ match 守卫就是 match arm 模式后额外的 if 条件，想要匹配该条件也必须满足 if 条件
+
++ match 守卫适用于比单独的模式更复杂的场景
+
+  ```rust
+  fn main() {
+      let num = Some(4);
+  
+      match num {
+          Some(x) if x < 5 => println!("less than five: {}", x),
+          Some(x) => println!("{}", x),
+          None => (),
+      }
+  }
+  
+  fn main() {
+      let x = Some(5);
+      let y = 10;
+  
+      match x {
+          Some(50) => println!("Got 50"),
+          Some(n) if n == y => println!("Matched, n = {:?}", n),
+          _ => println!("Default case, x = {:?}", x),
+      }
+  
+      println!("at the end: x = {:?}, y = {:?}", x, y);
+  }
+  
+  fn main() {
+      let x = 4;
+      let y = false;
+  
+      match x {
+          4 | 5 | 6 if y => println!("yes"),
+          _ => println!("no"),
+      }
+  }
+  ```
+
+#### 18.3.8 @绑定
+
++ @ 符号让我们可以创建一个变量，改变量可以自测试某个值是否与模式匹配的同时保存该值
+
+  ```rust
+  enum Message {
+      Hello { id: i32 },
+  }
+  
+  fn main() {
+      let msg = Message::Hello { id: 5 };
+  
+      match msg {
+          Message::Hello { id: id_variable @ 3..=7 } => {
+              println!("Found an id in range: {}", id_variable)
+          },
+          Message::Hello { id: 10..=12 } => {
+              println!("Found an id in another range")
+          },
+          Message::Hello { id } => {
+              println!("Found some other id: {}", id)
+          },
+      }
+  }
+  ```
+
+  
+
+## 19、高级特性
 
 
 
