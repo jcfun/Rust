@@ -8336,11 +8336,415 @@ note: required by a bound in `spawn`
 
   
 
+### 17.3 实现面向对象的设计模式
+
+#### 状态模式（state pattern）
+
++ 一种面向对象的设计模式
+  + 一个值拥有的内部状态由数个状态对象（state object）表达而成，而值的行为则随着内部状态的改变而改变
++ 使用状态模式意味着
+  + 在业务需求发生变化时我们不需要修改持有状态对象的值，或者使用这个值的代码
+  + 只需要更新状态对象内部的代码，以便改变其规则。或者增加一些新的状态对象
+
+#### 17.3.1 例子
+
+**src/lib.rs**
+
+```rust
+pub struct Post {
+    state: Option<Box<dyn State>>,
+    content: String,
+}
+
+impl Post {
+    pub fn new() -> Post {
+        Post {
+            state: Some(Box::new(Draft {})),
+            content: String::new(),
+        }
+    }
+    pub fn add_text(&mut self, text: &str) {
+        self.content.push_str(text);
+    }
+
+    pub fn content(&self) -> &str {
+        self.state.as_ref().unwrap().content(&self)
+    }
+
+    pub fn request_review(&mut self) {
+        if let Some(s) = self.state.take() {
+            self.state = Some(s.request_review())
+        }
+    }
+
+    pub fn approve(&mut self) {
+        if let Some(s) = self.state.take() {
+            self.state = Some(s.approve())
+        }
+    }
+}
+
+trait State {
+    fn request_review(self: Box<Self>) -> Box<dyn State>;
+    fn approve(self: Box<Self>) -> Box<dyn State>;
+    fn content<'a>(&self, post: &'a Post) -> &'a str{
+        ""
+    }
+}
+
+struct Draft {}
+
+impl State for Draft {
+    fn request_review(self: Box<Self>) -> Box<dyn State> {
+        Box::new(PendingReview {})
+    }
+
+    fn approve(self: Box<Self>) -> Box<dyn State> {
+        self
+    }
+}
+
+struct PendingReview {}
+
+impl State for PendingReview {
+    fn request_review(self: Box<Self>) -> Box<dyn State> {
+        self
+    }
+
+    fn approve(self: Box<Self>) -> Box<dyn State> {
+        Box::new(Published {})
+    }
+}
+
+struct Published {}
+
+impl State for Published {
+    fn request_review(self: Box<Self>) -> Box<dyn State> {
+        self
+    }
+
+    fn approve(self: Box<Self>) -> Box<dyn State> {
+        self
+    }
+
+    fn content<'a>(&self, post: &'a Post) -> &'a str {
+        &post.content
+    }
+}
+```
+
+**src/main.rs**
+
+```rust
+use oop_demo::Post;
+
+fn main() {
+    let mut post = Post::new();
+
+    post.add_text("I ate a salad for lunch today");
+    assert_eq!("", post.content());
+
+    post.request_review();
+    assert_eq!("", post.content());
+
+    post.approve();
+    assert_eq!("I ate a salad for lunch today", post.content());
+
+}
+```
+
+#### 17.3.2 状态模式的取舍权衡
+
++ 缺点
+  + 某些状态之间是相互耦合的
+  + 需要重复实现一些逻辑代码
+
+##### 将状态和行为编码为类型
+
++ 将状态编码为不同的类型
+
+  + Rust 类型检查系统会通过编译时的错误来阻止用户使用无效的状态
+
+  **src/lib.rs**
+
+  ```rust
+  pub struct Post {
+      content: String,
+  }
+  
+  pub struct DraftPost {
+      content: String,
+  }
+  
+  impl Post {
+      pub fn new() -> DraftPost {
+          DraftPost { content: String::new() }
+      }
+      pub fn content(&self) -> &str {
+          &&self.content
+      }
+  }
+  
+  impl DraftPost {
+      pub fn add_text(&mut self, text: &str) {
+          self.content.push_str(text);
+      }
+      pub fn request_review(self) -> PendingReviewPost {
+          PendingReviewPost {
+              content: self.content,
+          }
+      }
+  }
+  
+  pub struct PendingReviewPost {
+      content: String,
+  }
+  
+  impl PendingReviewPost {
+      pub fn approve(self) -> Post {
+          Post {
+              content: self.content,
+          }
+      }
+  }
+  ```
+
+  **src/main.rs**
+
+  ```rust
+  use oop_demo::Post;
+  
+  fn main() {
+      let mut post = Post::new();
+  
+      post.add_text("I ate a salad for lunch today");
+  
+      let post = post.request_review();
+  
+      let post = post.approve();
+  
+      assert_eq!("I ate a salad for lunch today", post.content());
+  
+  }
+  ```
+
++ Rust不仅能够实现面向对象的设计模式，还可以支持更多的模式
+
++ 例如：将状态和行为编码为类型
+
++ 面向对象的经典模式并不总是 Rust 编程实践中的最佳选择，因为 Rust 具有所有权等其它面向对象语言所没有的特性
 
 
 
+## 18、模式匹配
+
+### 模式
+
++ 模式是 Rust 中的一种特殊语法，用于匹配复杂和简单类型的结构
++ 将模式与匹配表达式和其它构造结合使用，可以更好地控制程序的控制流
++ 模式由一下元素（的一些组合）组成
+  + 字面值
+  + 结构的数组、enum、struct 和 tuple
+  + 变量
+  + 通配符
+  + 占位符
++ 想要使用模式，需要将其与某个值进行比较
+  + 如果模式匹配，就可以在代码中使用这个值的相应部分
+
+### 18.1 所有可以使用模式的场景
+
+#### 18.1.1 match 的 Arm
+
+```rust
+match VALUE {
+  PATTERN => EXPRESSION,
+  PATTERN => EXPRESSION,
+  PATTERN => EXPRESSION,
+}
+```
+
++ match 表达式的要求
+
+  + 详尽（包含所有的可能性）
+
++ 一个特殊的模式：`_`（下划线）
+
+  + 它会匹配任何东西
+  + 它不会绑定到变量
+  + 通常用于 match 的最后一个 arm；或用于忽略某些值
+
+#### 18.1.2 条件 if let 表达式
+
++ `if let`表达式主要是作为一种简短的方式来等价的替代只有一个匹配项的 match
+
++ `if let`可选的可以拥有`else`，包括
+
+  + `else if`
+  + `else if let`
+
++ 但，`if let`不会检查穷尽性
+
+  ```rust
+  fn main() {
+      let favorite_color: Option<&str> = None;
+      let is_tuesday = false;
+      let age: Result<u8, _> = "34".parse();
+  
+      if let Some(color) = favorite_color {
+          println!("Using your favorite color, {}, as the background", color);
+      } else if is_tuesday {
+          println!("Tuesday is green day!");
+      } else if let Ok(age) = age {
+          if age > 30 {
+              println!("Using purple as the background color");
+          } else {
+              println!("Using orange as the background color");
+          }
+      } else {
+          println!("Using blue as the background color");
+      }
+  }
+  ```
+
+#### 18.1.3 while let 条件循环
+
++ 只要模式继续满足匹配的条件，那它允许 while 循环一直运行
+
+  ```rust
+  fn main() {
+      let mut stack = Vec::new();
+  
+      stack.push(1);
+      stack.push(2);
+      stack.push(3);
+  
+      while let Some(top) = stack.pop() {
+          println!("{}", top);
+      }
+  }
+  ```
+
+#### 18.1.4 for 循环
+
++ for 循环是 Rust 中最常见的循环
+
++ for 循环中，模式就是紧随 for 关键字后的值
+
+  ```rust
+  fn main() {
+      let v = vec!['a', 'b', 'c'];
+  
+      for (index, value) in v.iter().enumerate() {
+          println!("{} is at index {}", value, index);
+      }
+  }
+  ```
+
+#### 18.1.5 let 语句
+
++ let 语句也是模式
+
++ `let PATTERN = EXPRESSION;`
+
+  ```rust
+  fn main() {
+      let a = 5;
+  
+      let (x, y, z) = (1, 2, 3);
+  }
+  ```
+
+#### 18.1.6 函数参数
+
++ 函数参数也可以是模式
+
+  ```rust
+  fn foo(x: i32) {
+      // code goes here
+  }
+  
+  fn print_coordinates(&(x, y): &(i32, i32)) {
+      println!("Current location: ({}, {})", x, y);
+  }
+  fn main() {
+      let point = (3, 5);
+      print_coordinates(&point);
+  }
+  ```
 
 
+
+### 18.2 可辩驳性（可失败性）：模式是否会匹配失败
+
++ 模式有两种形式：可辩驳的（refutable）、无可辩驳的（irrefutable）
+
++ 能匹配所有可能传递的值的模式：无可辩驳的
+
+  + 例如：`let x = 5;`
+
++ 对某些可能的值，无法进行匹配的模式：可辩驳的
+
+  + 例如：`if let Some(x) = a_value`
+
++ 函数参数、let 语句、for 循环只接受无可辩驳的模式
+
++ `if let`和`while let`接受可辩驳和无可辩驳的模式
+
+  ```rust
+  fn main() {
+      let a: Option<i32> = Some(5);
+      // let Some(x) = a; // error[E0005]: refutable pattern in local binding: `None` not covered
+      if let Some(x) = a {
+  
+      }
+      if let x = 5 {} // warning: irrefutable `if let` pattern
+  }
+  ```
+
+
+
+### 18.3 模式语法
+
+#### 18.3.1 匹配字面量
+
++ 模式可以直接匹配字面值
+
+  ```rust
+  fn main() {
+      let x = 1;
+  
+      match x {
+          1 => println!("one"),
+          2 => println!("two"),
+          3 => println!("three"),
+          _ => println!("anything"),
+      }
+  }
+  ```
+
+#### 18.3.2 匹配命名变量
+
++ 命名的变量是可匹配任何值的无可辩驳模式
+
+  ```rust
+  fn main() {
+      let x = Some(5);
+      let y = 10;
+  
+      match x {
+          Some(50) => println!("Got 50"),
+          Some(y) => println!("Matched, y = {:?}",  y),
+          _ => println!("Default case, x = {:?}", x),
+      }
+  
+      println!("at the end: x = {:?}, y = {:?}", x, y);
+  }
+  ```
+
+#### 18.3.3 多重模式
+
++ 在 match 表达式中，使用 | 语法（就是或的意思），可以匹配多种模式
++ 
 
 
 
