@@ -137,105 +137,108 @@ println!("{}", spaces);
 > + 布尔类型
 > + 字符类型
 
-+ **整数类型**
+##### 整数类型
 
-  + 整数类型没有小数部分
++ 整数类型没有小数部分
 
-  + 例如u32就是一个无符号的整数类型，占据32位的空间
++ 例如u32就是一个无符号的整数类型，占据32位的空间
 
-  + 无符号整数类型以u开头
++ 无符号整数类型以u开头
 
-  + 有符号整数类型以i开头
++ 有符号整数类型以i开头
 
-  + Rust的整数类型列表如下：
++ Rust的整数类型列表如下：
 
-    | Length  | Signed  | Unsigned |
-    | ------- | ------- | -------- |
-    | 8-bit   | `i8`    | `u8`     |
-    | 16-bit  | `i16`   | `u16`    |
-    | 32-bit  | `i32`   | `u32`    |
-    | 64-bit  | `i64`   | `u64`    |
-    | 128-bit | `i128`  | `u128`   |
-    | arch    | `isize` | `usize`  |
+  | Length  | Signed  | Unsigned |
+  | ------- | ------- | -------- |
+  | 8-bit   | `i8`    | `u8`     |
+  | 16-bit  | `i16`   | `u16`    |
+  | 32-bit  | `i32`   | `u32`    |
+  | 64-bit  | `i64`   | `u64`    |
+  | 128-bit | `i128`  | `u128`   |
+  | arch    | `isize` | `usize`  |
 
-  + isize和usize类型
++ isize和usize类型
 
-    + isize和usize类型的位数由程序运行的计算机的架构所决定：如果是64位的计算机，那就是64位的
-    + 使用isize和usize的主要场景是对某种集合进行索引操作
+  + isize和usize类型的位数由程序运行的计算机的架构所决定：如果是64位的计算机，那就是64位的
+  + 使用isize和usize的主要场景是对某种集合进行索引操作
 
-  + 整数字面值
++ 整数字面值
 
-    | Number Literals               | Example       |
-    | ----------------------------- | ------------- |
-    | Decimal (十进制)              | `98_222`      |
-    | Hex (十六进制)                | `0xff`        |
-    | Octal (八进制)                | `0o77`        |
-    | Binary (二进制)               | `0b1111_0000` |
-    | Byte (单字节字符)(仅限于`u8`) | `b'A'`        |
+  | Number Literals               | Example       |
+  | ----------------------------- | ------------- |
+  | Decimal (十进制)              | `98_222`      |
+  | Hex (十六进制)                | `0xff`        |
+  | Octal (八进制)                | `0o77`        |
+  | Binary (二进制)               | `0b1111_0000` |
+  | Byte (单字节字符)(仅限于`u8`) | `b'A'`        |
 
-    + 除了byte类型外，所有的数值字面值都允许使用类型后缀：例如 57u8
-    + 如果你不太清楚应该使用哪种类型，可以使用Rust响应的默认类型
-    + 整数的默认类型就是i32：总体上来说i32的速度很快，即使在64位系统中
+  + 除了byte类型外，所有的数值字面值都允许使用类型后缀：例如 57u8
+  + 如果你不太清楚应该使用哪种类型，可以使用 Rust 响应的默认类型
+  + 整数的默认类型就是i32：总体上来说i32的速度很快，即使在64位系统中
 
-  + 整数溢出
++ 整数溢出
 
-    + 例如：u8的范围是0-255，如果把一个u8变量的值设为256，那么：
-      + 调试模式下编译：Rust会检查整数溢出，如果发生溢出，程序在运行时就会panic
-      + 发布模式下（--release）编译：Rust不会检查可能导致panic的整数溢出
-        + 如果发生溢出：Rust会执行“环绕”操作：256变成0，257变成1...
+  + 例如：u8的范围是0-255，如果把一个u8变量的值设为256，那么：
+    + 调试模式下编译：Rust 会检查整数溢出，如果发生溢出，程序在运行时就会 panic
+    + 发布模式下（--release）编译：Rust不会检查可能导致 panic 的整数溢出
+      + 如果发生溢出：Rust 会执行“环绕”操作：256变成0，257变成1...
+
+```rust
+let guess: u32 = "42".parse().expect("Not a number");
+println!("{}", guess);
+```
+
+##### 浮点类型
+
++ Rust有两种基础的浮点类型，也就是含有小数部分的类型
+  + f32，32位，单精度
+  + f64，64位，双精度
+  
++ Rust的浮点类型使用了IEEE-754标准来表述
+
++ f64是默认类型，因为在现代CPU上f64和f32的速度差不多，而且精度更高
 
   ```rust
-  let guess: u32 = "42".parse().expect("Not a number");
-  println!("{}", guess);
+  let x = 2.0;
+  let y: f32 = 3.0;
   ```
-
-+ **浮点类型**
-  + Rust有两种基础的浮点类型，也就是含有小数部分的类型
-    + f32，32位，单精度
-    + f64，64位，双精度
-    
-  + Rust的浮点类型使用了IEEE-754标准来表述
-  
-  + f64是默认类型，因为在现代CPU上f64和f32的速度差不多，而且精度更高
-  
-    ```rust
-    let x = 2.0;
-    let y: f32 = 3.0;
-    ```
 
 + 数值操作
   + 加减乘除余
 
-+ **布尔类型**
-  + Rust布尔类型也有两个值：true和false
-  
-  + 一个字节大小
-  
-  + 符号是`bool`
-  
-    ```rust
-    let t = true;
-    let f: bool = false;
-    ```
+##### 布尔类型
 
-+ **字符类型**
-  + Rust中国char类型被用来描述语言中最基础的单个字符
++ Rust布尔类型也有两个值：true和false
+
++ 一个字节大小
+
++ 符号是`bool`
+
+  ```rust
+  let t = true;
+  let f: bool = false;
+  ```
+
+##### 字符类型
+
++ Rust中国char类型被用来描述语言中最基础的单个字符
+
++ 字符类型的字面值使用单引号
+
++ 占用4个字节大小
+
++ 是Unicode标量值，可以表示比ASCII多得多的字符内容：拼音、中日韩文、零长度空白字符、emoji表情等
+  + U+0000到U+D7FF
+  + U+E000到U+10FFFF
   
-  + 字符类型的字面值使用单引号
-  
-  + 占用4个字节大小
-  
-  + 是Unicode标量值，可以表示比ASCII多得多的字符内容：拼音、中日韩文、零长度空白字符、emoji表情等
-    + U+0000到U+D7FF
-    + U+E000到U+10FFFF
-    
-  + 但是Unicode中并没有“字符”的概念，所以直接上认识的字符也许与Rust中的概念并不相符
-  
-    ```rust
-    let x = 'x';
-    let y: char = '卍';
-    let z = '😂';
-    ```
++ 但是Unicode中并没有“字符”的概念，所以直接上认识的字符也许与Rust中的概念并不相符
+
+  ```rust
+  let x = 'x';
+  let y: char = '卍';
+  let z = '😂';
+  ```
 
 #### 3.2.2 复合类型
 
@@ -243,78 +246,81 @@ println!("{}", spaces);
 
 + Rust提供了两种基础的复合类型：元组（Tuple）、数组
 
-+ **Tuple**
-  + Tuple可以将多个类型的多个值放在同一个类型里
+
+##### Tuple
+
++ Tuple可以将多个类型的多个值放在同一个类型里
+
++ Tuple的长度是固定的：一旦声明就无法改变
+
++ 创建Tuple
+  + 在小括号里，将值用逗号分开
+  + Tuple中的每个位置都对应一个类型，Tuple中各元素的类型不必相同
   
-  + Tuple的长度是固定的：一旦声明就无法改变
++ 获取Tuple的元素值
+  + 可以使用模式匹配来解构（*destructuring*）一个Tuple来获取元素的值
   
-  + 创建Tuple
-    + 在小括号里，将值用逗号分开
-    + Tuple中的每个位置都对应一个类型，Tuple中各元素的类型不必相同
-    
-  + 获取Tuple的元素值
-    + 可以使用模式匹配来解构（*destructuring*）一个Tuple来获取元素的值
-    
-  + 访问Tuple的元素
-    + 在Tuple变量使用点标记法，后接元素的索引号
-    
-  + 不带任何值的元组有个特殊的名称，叫做 **单元（unit）** 元组。这种值以及对应的类型都写作 `()`，表示空值或空的返回类型。如果表达式不返回任何其他值，则会隐式返回单元值
++ 访问Tuple的元素
+  + 在Tuple变量使用点标记法，后接元素的索引号
+  
++ 不带任何值的元组有个特殊的名称，叫做 **单元（unit）** 元组。这种值以及对应的类型都写作 `()`，表示空值或空的返回类型。如果表达式不返回任何其他值，则会隐式返回单元值
+
+```rust
+let tup: (i32, f64, u8) = (500, 6.3, 1);
+
+let (x, y, z) = tup;
+println!("{}, {}, {}", x, y, z);
+
+println!("{}, {}, {}", tup.0, tup.1, tup.2);
+```
+
+##### 数组
+
++ 数组也可以将多个值放在一个类型里
+
++ 数组中的每个元素的类型必须相同
+
++ 数组的长度也是固定的
+
++ 声明一个数组
+  + 在中括号里，各值用逗号分开
+  
++ 数组的用处
+  + 如果想让你的数据存放在stack（栈）上而不是heap（堆）上，或者想保证有固定数量的元素，这时使用数组更有好处
+  
++ 数组没有Vector灵活
+  + Vector和数组类似，它由标准库提供
+  + Vector的长度可以改变
+  + 如果你不确定应该用数组还是Vector，那么估计你应该用Vector
+  
++ 数组的类型
+  + 数组的类型以这种形式表示：[类型; 长度]，例如： `let a: [i32; 5] = [1, 2, 3, 4, 5];`
+  
++ 另一种声明数组的方法
+  + 如果数组的每个元素值都相同，那么可以在：
+    + 在中括号里指定初始值
+    + 然后是一个 “ ; ”
+    + 最后是数组的长度
+    + 例如：`let a = [3; 5];`它就相当于：`let a = [3, 3, 3, 3, 3]`
+  
++ 访问数组的元素
+  + 数组是在Stack上分配的单个块的内存
+  + 可以使用索引来访问数组的元素
+  + 如果访问的索引超出了数组索引的范围，那么：
+    + cargo check会通过
+    + 编译运行时会报错（index out of bounds），Rust不会允许其继续访问相应地址的内存
   
   ```rust
-  let tup: (i32, f64, u8) = (500, 6.3, 1);
+  let a = [1, 2, 3, 4, 5];
+  let b: [i32; 5] = [1, 2, 3, 4, 5];
+  let c = [3; 5];
   
-  let (x, y, z) = tup;
-  println!("{}, {}, {}", x, y, z);
-  
-  println!("{}, {}, {}", tup.0, tup.1, tup.2);
+  let first = a[0];
+  let second = a[1];
+  let third = a[27]; // index out of bounds
   ```
   
-+ **数组**
-  + 数组也可以将多个值放在一个类型里
   
-  + 数组中的每个元素的类型必须相同
-  
-  + 数组的长度也是固定的
-  
-  + 声明一个数组
-    + 在中括号里，各值用逗号分开
-    
-  + 数组的用处
-    + 如果想让你的数据存放在stack（栈）上而不是heap（堆）上，或者想保证有固定数量的元素，这时使用数组更有好处
-    
-  + 数组没有Vector灵活
-    + Vector和数组类似，它由标准库提供
-    + Vector的长度可以改变
-    + 如果你不确定应该用数组还是Vector，那么估计你应该用Vector
-    
-  + 数组的类型
-    + 数组的类型以这种形式表示：[类型; 长度]，例如： `let a: [i32; 5] = [1, 2, 3, 4, 5];`
-    
-  + 另一种声明数组的方法
-    + 如果数组的每个元素值都相同，那么可以在：
-      + 在中括号里指定初始值
-      + 然后是一个 “ ; ”
-      + 最后是数组的长度
-      + 例如：`let a = [3; 5];`它就相当于：`let a = [3, 3, 3, 3, 3]`
-    
-  + 访问数组的元素
-    + 数组是在Stack上分配的单个块的内存
-    + 可以使用索引来访问数组的元素
-    + 如果访问的索引超出了数组索引的范围，那么：
-      + cargo check会通过
-      + 编译运行时会报错（index out of bounds），Rust不会允许其继续访问相应地址的内存
-    
-    ```rust
-    let a = [1, 2, 3, 4, 5];
-    let b: [i32; 5] = [1, 2, 3, 4, 5];
-    let c = [3; 5];
-    
-    let first = a[0];
-    let second = a[1];
-    let third = a[27]; // index out of bounds
-    ```
-    
-    
 
 ### 3.3 函数与注释
 
@@ -324,64 +330,67 @@ println!("{}", spaces);
 
 + 针对函数和变量名，Rust使用snake case命名规范：所有的字母都是小写的，单词之间使用下划线分开
 
-+ **函数的参数**
-  + parameters、arguments
-  
-  + 在函数签名里，必须声明每个参数的类型
-  
-    ```rust
-    fn another_function(x: i32, y: i32) {
-        println!("Another function!");
-        println!("the value of x and y is: {}, {}", x, y);
-    }
-    ```
 
-+ **函数体中的语句与表达式**
+##### 函数的参数
+
++ parameters、arguments
+
++ 在函数签名里，必须声明每个参数的类型
+
+  ```rust
+  fn another_function(x: i32, y: i32) {
+      println!("Another function!");
+      println!("the value of x and y is: {}, {}", x, y);
+  }
+  ```
+
+##### 函数体中的语句与表达式
+
++ 函数体由一系列语句组成，可选的有一个表达式结束
+
++ Rust是一个基于表达式的语言
+
++ 语句是执行一些动作的指令
+
++ 表达式会计算产生一个值，因此它必然有类型
+
++ 函数的定义也是语句
+
++ 语句不返回值，它的类型永远是`()`，所以不可以使用`let`将语句赋值 给一个变量
+
++ 如果把一个表达式加上分号，那么它就变成 了一个语句
+
++ 如果把语句放到一个语句块中包起来，那么它就可以被当 成一个表达式使用
+
+  ```rust
+  // let x = (let y = 6); // expected expression, found statement (`let`)
   
-  + 函数体由一系列语句组成，可选的有一个表达式结束
-  
-  + Rust是一个基于表达式的语言
-  
-  + 语句是执行一些动作的指令
-  
-  + 表达式会计算产生一个值，因此它必然有类型
-  
-  + 函数的定义也是语句
-  
-  + 语句不返回值，它的类型永远是`()`，所以不可以使用`let`将语句赋值 给一个变量
-  
-  + 如果把一个表达式加上分号，那么它就变成 了一个语句
-  
-  + 如果把语句放到一个语句块中包起来，那么它就可以被当 成一个表达式使用
+  let y = {
+      let x = 1;
+      x + 3
+  };
+  ```
+
+##### 函数的返回值
+
++ 在 `->`符号后面声明函数返回值的类型，但是不可以为返回值命名
+
++ 在Rust中，返回值就是函数体里面最后一个表达式的值
+
++ 若想提前返回，需使用return关键字，并指定一个值
+  + 大多数函数都是默认使用最后一个表达式作为返回值
   
     ```rust
-    // let x = (let y = 6); // expected expression, found statement (`let`)
-    
-    let y = {
-        let x = 1;
-        x + 3
-    };
+    fn five(x: i32) -> i32 {
+        5 + x
+    }
+    let x = five(6);
+    println!("The value of x is {}", x);
     ```
-  
-+ 函数的返回值
-  + 在 `->`符号后面声明函数返回值的类型，但是不可以为返回值命名
-  
-  + 在Rust中，返回值就是函数体里面最后一个表达式的值
-  
-  + 若想提前返回，需使用return关键字，并指定一个值
-    + 大多数函数都是默认使用最后一个表达式作为返回值
-    
-      ```rust
-      fn five(x: i32) -> i32 {
-          5 + x
-      }
-      let x = five(6);
-      println!("The value of x is {}", x);
-      ```
 
 #### 3.3.2 注释
 
-> 与C和Java一样
+> 与 C 和 Java 一样
 
 
 
@@ -422,73 +431,78 @@ println!("{}", spaces);
 
 + Rust提供了3种循环：`loop`、`while`和`for`
 
-+ **loop循环**
-  + `loop`关键字告诉Rust反复执行一块代码，直到你喊停
-  
-  + 可以在`loop`循环中使用`break`关键字来告诉程序何时停止循环
-  
-    ```rust
-    let mut counter = 0;
-    
-    let result = loop {
-        counter += 1;
-        if counter == 10 {
-            break counter * 2
-        }
-    };
-    
-    println!("The result is: {}", result);
-    ```
 
-+ **while条件循环**
-  + 另外的一种常见的循环模式是每次执行循环体之前都判断一次条件
-  
-    ```rust
-    let mut number = 3;
-    while number != 0 {
-        println!("{}!", number);
-    
-        number = number - 1;
-    }
-    
-    println!("LIFTOFF!!!")
-    ```
+##### loop循环
 
-+ **使用for循环遍历集合**
-  + 可以使用`while`或`loop`来遍历集合，但是易错且低效
-  
-  + 使用`for`循环更简洁紧凑，它可以针对集合中的每个元素来执行一些代码
-  
-  + 由于`for`循环的安全、简洁性，所以它在Rust里用的最多
-  
-    ```rust
-    let a = [10, 20, 30, 40, 50, 60];
-    let mut index = 0;
-    while index < a.len() {
-        println!("The value is: {}", a[index]);
-        index += 1;
-    }
-    
-    for element in a.iter() {
-        println!("The value is: {}", element);
-    }
-    ```
++ `loop`关键字告诉Rust反复执行一块代码，直到你喊停
 
-+ **Range**
-  + 由标准库提供
++ 可以在`loop`循环中使用`break`关键字来告诉程序何时停止循环
+
+  ```rust
+  let mut counter = 0;
   
-  + 指定一个开始数字和一个结束数字，`Range`可以生成它们之间的数字（不含结束）
+  let result = loop {
+      counter += 1;
+      if counter == 10 {
+          break counter * 2
+      }
+  };
   
-  + `rev`方法可以反转`Range`
+  println!("The result is: {}", result);
+  ```
+
+##### while条件循环
+
++ 另外的一种常见的循环模式是每次执行循环体之前都判断一次条件
+
+  ```rust
+  let mut number = 3;
+  while number != 0 {
+      println!("{}!", number);
   
-    ```rust
-    for number in (1 .. 4).rev() {
-        println!("{}!", number);
-    }
-    println!("LIFTOFF!!!");
-    ```
+      number = number - 1;
+  }
   
-    
+  println!("LIFTOFF!!!")
+  ```
+
+##### 使用for循环遍历集合
+
++ 可以使用`while`或`loop`来遍历集合，但是易错且低效
+
++ 使用`for`循环更简洁紧凑，它可以针对集合中的每个元素来执行一些代码
+
++ 由于`for`循环的安全、简洁性，所以它在Rust里用的最多
+
+  ```rust
+  let a = [10, 20, 30, 40, 50, 60];
+  let mut index = 0;
+  while index < a.len() {
+      println!("The value is: {}", a[index]);
+      index += 1;
+  }
+  
+  for element in a.iter() {
+      println!("The value is: {}", element);
+  }
+  ```
+
+##### Range
+
++ 由标准库提供
+
++ 指定一个开始数字和一个结束数字，`Range`可以生成它们之间的数字（不含结束）
+
++ `rev`方法可以反转`Range`
+
+  ```rust
+  for number in (1 .. 4).rev() {
+      println!("{}!", number);
+  }
+  println!("LIFTOFF!!!");
+  ```
+
+  
 
 ## 4、认识所有权
 
@@ -622,132 +636,132 @@ println!("{}", spaces);
 
 > 在Rust 中，多个变量可以采取不同的方式与同一数据进行交互
 
-+ 移动
+##### 移动
+
+```rust
+fn main() {
+    let x = 5;
+    let y = x;
+}
+```
+
+整数是有已知固定大小的简单值，所以这两个 5 被放入了栈中
+
+```rust
+fn main() {
+    let s1 = String::from("hello");
+    let s2 = s1;
+}
+```
+
+情况和前面的例子不同
+
++ `String` 由三部分组成，这一组数据存储在栈上
+
+  + 一个指向存放字符串内容内存的指针
+  + 一个长度
+  + 一个容量
+
++ 存放字符串内容的部分在heap上
+
++ 长度len，就是存放字符串内容所需的字节数
+
++ 容量capacity是指`String`从内存分配器总共获得的内存的总字节数
+
+![String in memory](assets/String_in_memory.svg)
+
++ 当我们将 `s1` 赋值给 `s2`，`String` 的数据被复制了，这意味着我们从栈上拷贝了它的指针、长度和容量。我们并没有复制指针指向的堆上数据。
+
+  ![the same value](the_same_value.svg)
+
++ 当变量离开作用域后，Rust 自动调用 `drop` 函数并清理变量的堆内存
+
++ 这就有了一个问题：当 `s2` 和 `s1` 离开作用域，他们都会尝试释放相同的内存
+
+  + 这是一个叫做 **二次释放**（*double free*）的错误，也是之前提到过的内存安全性 bug 之一
+  + 两次释放（相同）内存会导致内存污染，它可能会导致潜在的安全漏洞
+
++ 确保内存安全
+
+  + Rust没有尝试复制被分配的内存
+  + Rust 认为 `s1` 不再有效
+    + Rust 不需要在 `s1` 离开作用域后清理任何东西
+
+  ```rust
+  fn main() {
+      let s1 = String::from("hello");
+      let s2 = s1;
+  
+      println!("{}, world!", s1);
+  }
+  ```
+
++ 你会得到一个类似如下的错误，因为 Rust 禁止你使用无效的引用
+
+  ```rust
+  error[E0382]: borrow of moved value: `s1`
+   --> src\main.rs:5:28
+    |
+  2 |     let s1 = String::from("hello");
+    |         -- move occurs because `s1` has type `String`, which does not implement the `Copy` trait
+  3 |     let s2 = s1;
+    |              -- value moved here
+  4 |
+  5 |     println!("{}, world!", s1);
+    |                            ^^ value borrowed here after move
+    |
+    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+  
+  For more information about this error, try `rustc --explain E0382`.
+  warning: `owner` (bin "owner") generated 1 warning
+  error: could not compile `owner` due to previous error; 1 warning emitted
+  ```
+
++ 如果你在其他语言中听说过术语 **浅拷贝**（*shallow copy*）和 **深拷贝**（*deep copy*），那么拷贝指针、长度和容量而不拷贝数据可能听起来像浅拷贝。不过因为 Rust 同时使第一个变量无效了，这个操作被称为 **移动**（*move*），而不是浅拷贝。上面的例子可以解读为 `s1` 被 **移动** 到了 `s2` 中。
+
+  ![s1 moved to s2](assets/s1_moved_to_s2.svg)
+
++ 这里还隐含了一个设计选择：Rust 永远也不会自动创建数据的 “深拷贝”。因此，任何 **自动** 的复制可以被认为对运行时性能影响较小
+
+##### 克隆
+
++ 如果我们 **确实** 需要深度复制 `String` 中堆上的数据，而不仅仅是栈上的数据，可以使用一个叫做 `clone` 的通用函数
+
+  ```rust
+  fn main() {
+      let s1 = String::from("hello");
+      let s2 = s1.clone();
+  
+      println!("s1 = {}, s2 = {}", s1, s2);
+  }
+  ```
+
+
+##### 只在栈上的数据：拷贝
+
++ 这里还有一个没有提到的小窍门。这些代码使用了整型并且是有效的
 
   ```rust
   fn main() {
       let x = 5;
       let y = x;
+  
+      println!("x = {}, y = {}", x, y);
   }
   ```
-  
-  整数是有已知固定大小的简单值，所以这两个 5 被放入了栈中
-  
-  ```rust
-  fn main() {
-      let s1 = String::from("hello");
-      let s2 = s1;
-  }
-  ```
-  
-  情况和前面的例子不同
-  
-  + `String` 由三部分组成，这一组数据存储在栈上
-  
-    + 一个指向存放字符串内容内存的指针
-    + 一个长度
-    + 一个容量
-  
-  + 存放字符串内容的部分在heap上
-  
-  + 长度len，就是存放字符串内容所需的字节数
-  
-  + 容量capacity是指`String`从内存分配器总共获得的内存的总字节数
-  
-  ![String in memory](assets/String_in_memory.svg)
-  
-  + 当我们将 `s1` 赋值给 `s2`，`String` 的数据被复制了，这意味着我们从栈上拷贝了它的指针、长度和容量。我们并没有复制指针指向的堆上数据。
-  
-    ![the same value](the_same_value.svg)
-  
-  + 当变量离开作用域后，Rust 自动调用 `drop` 函数并清理变量的堆内存
-  
-  + 这就有了一个问题：当 `s2` 和 `s1` 离开作用域，他们都会尝试释放相同的内存
-  
-    + 这是一个叫做 **二次释放**（*double free*）的错误，也是之前提到过的内存安全性 bug 之一
-    + 两次释放（相同）内存会导致内存污染，它可能会导致潜在的安全漏洞
-  
-  + 确保内存安全
-  
-    + Rust没有尝试复制被分配的内存
-    + Rust 认为 `s1` 不再有效
-      + Rust 不需要在 `s1` 离开作用域后清理任何东西
-  
-    ```rust
-    fn main() {
-        let s1 = String::from("hello");
-        let s2 = s1;
-    
-        println!("{}, world!", s1);
-    }
-    ```
-  
-  + 你会得到一个类似如下的错误，因为 Rust 禁止你使用无效的引用
-  
-    ```rust
-    error[E0382]: borrow of moved value: `s1`
-     --> src\main.rs:5:28
-      |
-    2 |     let s1 = String::from("hello");
-      |         -- move occurs because `s1` has type `String`, which does not implement the `Copy` trait
-    3 |     let s2 = s1;
-      |              -- value moved here
-    4 |
-    5 |     println!("{}, world!", s1);
-      |                            ^^ value borrowed here after move
-      |
-      = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
-    
-    For more information about this error, try `rustc --explain E0382`.
-    warning: `owner` (bin "owner") generated 1 warning
-    error: could not compile `owner` due to previous error; 1 warning emitted
-    ```
-  
-  + 如果你在其他语言中听说过术语 **浅拷贝**（*shallow copy*）和 **深拷贝**（*deep copy*），那么拷贝指针、长度和容量而不拷贝数据可能听起来像浅拷贝。不过因为 Rust 同时使第一个变量无效了，这个操作被称为 **移动**（*move*），而不是浅拷贝。上面的例子可以解读为 `s1` 被 **移动** 到了 `s2` 中。
-  
-    ![s1 moved to s2](assets/s1_moved_to_s2.svg)
-  
-  + 这里还隐含了一个设计选择：Rust 永远也不会自动创建数据的 “深拷贝”。因此，任何 **自动** 的复制可以被认为对运行时性能影响较小
-  
-+ 克隆
 
-  + 如果我们 **确实** 需要深度复制 `String` 中堆上的数据，而不仅仅是栈上的数据，可以使用一个叫做 `clone` 的通用函数
-
-    ```rust
-    fn main() {
-        let s1 = String::from("hello");
-        let s2 = s1.clone();
-    
-        println!("s1 = {}, s2 = {}", s1, s2);
-    }
-    ```
-
-  + 只在栈上的数据：拷贝
-  
-    + 这里还有一个没有提到的小窍门。这些代码使用了整型并且是有效的
-  
-      ```rust
-      fn main() {
-          let x = 5;
-          let y = x;
-      
-          println!("x = {}, y = {}", x, y);
-      }
-      ```
-  
-    + 但这段代码似乎与我们刚刚学到的内容相矛盾：没有调用 `clone`，不过 `x` 依然有效且没有被移动到 `y` 中
-    + 原因是像整型这样的在编译时已知大小的类型被整个存储在栈上，所以拷贝其实际的值是快速的。这意味着没有理由在创建变量 `y` 后使 `x` 无效。换句话说，这里没有深浅拷贝的区别，所以这里调用 `clone` 并不会与通常的浅拷贝有什么不同，我们可以不用管它。
-    + Rust 有一个叫做 `Copy` trait 的特殊注解，可以用在类似整型这样的存储在栈上的类型上，如果一个类型实现了 `Copy` trait，那么一个旧的变量在将其赋值给其他变量后仍然可用
-    + 如果一个类型或者该类型的一部分实现类 `Drop`trait，那么Rust不允许让它再去实现`Copy`trait
-      + 任何一组简单标量值的组合都可以实现 `Copy`
-      + 任何不需要分配内存或某种形式资源的类型都可以实现 `Copy`
-      + 一些拥有`Copy`trait的类型
-        + 所有整数类型，比如 `u32`。
-        + 布尔类型，`bool`，它的值是 `true` 和 `false`。
-        + 所有浮点数类型，比如 `f64`。
-        + 字符类型，`char`。
-        + 元组，当且仅当其包含的类型也都实现 `Copy` 的时候。比如，`(i32, i32)` 实现了 `Copy`，但 `(i32, String)` 就没有。
-  
++ 但这段代码似乎与我们刚刚学到的内容相矛盾：没有调用 `clone`，不过 `x` 依然有效且没有被移动到 `y` 中
++ 原因是像整型这样的在编译时已知大小的类型被整个存储在栈上，所以拷贝其实际的值是快速的。这意味着没有理由在创建变量 `y` 后使 `x` 无效。换句话说，这里没有深浅拷贝的区别，所以这里调用 `clone` 并不会与通常的浅拷贝有什么不同，我们可以不用管它。
++ Rust 有一个叫做 `Copy` trait 的特殊注解，可以用在类似整型这样的存储在栈上的类型上，如果一个类型实现了 `Copy` trait，那么一个旧的变量在将其赋值给其他变量后仍然可用
++ 如果一个类型或者该类型的一部分实现类 `Drop`trait，那么Rust不允许让它再去实现`Copy`trait
+  + 任何一组简单标量值的组合都可以实现 `Copy`
+  + 任何不需要分配内存或某种形式资源的类型都可以实现 `Copy`
+  + 一些拥有`Copy`trait的类型
+    + 所有整数类型，比如 `u32`。
+    + 布尔类型，`bool`，它的值是 `true` 和 `false`。
+    + 所有浮点数类型，比如 `f64`。
+    + 字符类型，`char`。
+    + 元组，当且仅当其包含的类型也都实现 `Copy` 的时候。比如，`(i32, i32)` 实现了 `Copy`，但 `(i32, String)` 就没有。
 
 #### 4.1.8 所有权与函数
 
@@ -4263,37 +4277,38 @@ println!("1 new tweet: {}", tweet.summarize());
   |                           - borrow later used here
   ```
 
-+ **借用检查器**
 
-  + Rust编译器的借用检查器：比较作用域来判断所有的借用是否合法
+##### 借用检查器
 
-  ```rust
-  fn main() {
-      let r;                // ---------+-- 'a
-                            //          |
-      {                     //          |
-          let x = 5;        // -+-- 'b  |
-          r = &x;           //  |       |
-      }                     // -+       |
-                            //          |
-      println!("r: {}", r); //          |
-  }     
-  ```
++ Rust编译器的借用检查器：比较作用域来判断所有的借用是否合法
 
-  这里将 `r` 的生命周期标记为 `'a` 并将 `x` 的生命周期标记为 `'b`。如你所见，内部的 `'b` 块要比外部的生命周期 `'a` 小得多。在编译时，Rust 比较这两个生命周期的大小，并发现 `r` 拥有生命周期 `'a`，不过它引用了一个拥有生命周期 `'b` 的对象。程序被拒绝编译，因为生命周期 `'b` 比生命周期 `'a` 要小：被引用的对象比它的引用者存在的时间更短。
+    ```rust
+    fn main() {
+        let r;                // ---------+-- 'a
+                              //          |
+        {                     //          |
+            let x = 5;        // -+-- 'b  |
+            r = &x;           //  |       |
+        }                     // -+       |
+                              //          |
+        println!("r: {}", r); //          |
+    }     
+    ```
 
-  ```rust
-  fn main() {
-      let x = 5;            // ----------+-- 'b
-                            //           |
-      let r = &x;           // --+-- 'a  |
-                            //   |       |
-      println!("r: {}", r); //   |       |
-                            // --+       |
-  }                         // ----------+
-  ```
+    这里将 `r` 的生命周期标记为 `'a` 并将 `x` 的生命周期标记为 `'b`。如你所见，内部的 `'b` 块要比外部的生命周期 `'a` 小得多。在编译时，Rust 比较这两个生命周期的大小，并发现 `r` 拥有生命周期 `'a`，不过它引用了一个拥有生命周期 `'b` 的对象。程序被拒绝编译，因为生命周期 `'b` 比生命周期 `'a` 要小：被引用的对象比它的引用者存在的时间更短。
 
-  这里 `x` 拥有生命周期 `'b`，比 `'a` 要大。这就意味着 `r` 可以引用 `x`：Rust 知道 `r` 中的引用在 `x` 有效的时候也总是有效的。
+    ```rust
+    fn main() {
+        let x = 5;            // ----------+-- 'b
+                              //           |
+        let r = &x;           // --+-- 'a  |
+                              //   |       |
+        println!("r: {}", r); //   |       |
+                              // --+       |
+    }                         // ----------+
+    ```
+
+    这里 `x` 拥有生命周期 `'b`，比 `'a` 要大。这就意味着 `r` 可以引用 `x`：Rust 知道 `r` 中的引用在 `x` 有效的时候也总是有效的。
 
 #### 10.4.2 函数中的生命周期
 
@@ -4473,73 +4488,74 @@ help: consider introducing a named lifetime parameter
 
   在编写了很多 Rust 代码后，Rust 团队发现在特定情况下 Rust 程序员们总是重复地编写一模一样的生命周期注解。这些场景是可预测的并且遵循几个明确的模式。接着 Rust 团队就把这些模式编码进了 Rust 编译器中，如此借用检查器在这些情况下就能推断出生命周期而不再强制程序员显式的增加注解。
 
-+ **生命周期省略规则（*lifetime elision rules*）**
 
-  + 在Rust引用分析中所编入的模式称为**生命周期省略规则**
-    + 这些规则无需开发者来遵守
-    + 它们是一些特殊情况，由编译器来考虑
-    + 如果你的代码符合这些情况，那么就无需显式标注生命周期
-  + 生命周期省略规则不会提供完整的推断
-    + 如果应用规则后，引用的生命周期仍然模糊不清 --> 编译错误
-    + 解决办法：添加生命周期标注，表明引用间的相互关系
+##### 生命周期省略规则（*lifetime elision rules*）
 
-+ **输入、输出生命周期（input / output lifetimes）**
++ 在Rust引用分析中所编入的模式称为**生命周期省略规则**
+  + 这些规则无需开发者来遵守
+  + 它们是一些特殊情况，由编译器来考虑
+  + 如果你的代码符合这些情况，那么就无需显式标注生命周期
++ 生命周期省略规则不会提供完整的推断
+  + 如果应用规则后，引用的生命周期仍然模糊不清 --> 编译错误
+  + 解决办法：添加生命周期标注，表明引用间的相互关系
 
-  + 函数 / 方法的参数：输入生命周期
-  + 函数 / 方法的返回值：输出生命周期
+##### 输入、输出生命周期（input / output lifetimes）
 
-+ **生命周期省略的三个规则**
++ 函数 / 方法的参数：输入生命周期
++ 函数 / 方法的返回值：输出生命周期
 
-  + 编译器使用3个规则在没有显式标注生命周期的情况下，来确定引用的生命周期
+##### 生命周期省略的三个规则
 
-    + 规则1应用于输入生命周期
-    + 规则2、3应用于输出生命周期
-    + 如果编译器应用完3个规则之后，仍然有无法确定生命周期的引用 --> 报错
-    + 这些规则适用于`fn`定义和`impl`块
++ 编译器使用3个规则在没有显式标注生命周期的情况下，来确定引用的生命周期
 
-  + 规则
+  + 规则1应用于输入生命周期
+  + 规则2、3应用于输出生命周期
+  + 如果编译器应用完3个规则之后，仍然有无法确定生命周期的引用 --> 报错
+  + 这些规则适用于`fn`定义和`impl`块
 
-    + 规则1：每个引用类型的参数都有自己的生命周期
-    + 规则2：如果只有1个输入生命周期参数，那么该生命周期被赋给所有的输出生命周期参数
-    + 规则3：如果有多个输入生命周期参数，但其中一个是`&self`或`&mut self`（是方法），那么`self`的生命周期会被赋给所有的输出生命周期参数
++ 规则
 
-  + 例子：假设我们自己就是编译器。并应用这些规则来计算
+  + 规则1：每个引用类型的参数都有自己的生命周期
+  + 规则2：如果只有1个输入生命周期参数，那么该生命周期被赋给所有的输出生命周期参数
+  + 规则3：如果有多个输入生命周期参数，但其中一个是`&self`或`&mut self`（是方法），那么`self`的生命周期会被赋给所有的输出生命周期参数
 
-    +  `first_word` 函数签名中的引用的生命周期。开始时签名中的引用并没有关联任何生命周期：
++ 例子：假设我们自己就是编译器。并应用这些规则来计算
 
-      ```rust
-      fn first_word(s: &str) -> &str {
-      ```
+  +  `first_word` 函数签名中的引用的生命周期。开始时签名中的引用并没有关联任何生命周期：
 
-      接着编译器应用第一条规则，也就是每个引用参数都有其自己的生命周期。我们像往常一样称之为 `'a`，所以现在签名看起来像这样：
+    ```rust
+    fn first_word(s: &str) -> &str {
+    ```
 
-      ```rust
-      fn first_word<'a>(s: &'a str) -> &str {
-      ```
+    接着编译器应用第一条规则，也就是每个引用参数都有其自己的生命周期。我们像往常一样称之为 `'a`，所以现在签名看起来像这样：
 
-      对于第二条规则，因为这里正好只有一个输入生命周期参数所以是适用的。第二条规则表明输入参数的生命周期将被赋予输出生命周期参数，所以现在签名看起来像这样：
+    ```rust
+    fn first_word<'a>(s: &'a str) -> &str {
+    ```
 
-      ```rust
-      fn first_word<'a>(s: &'a str) -> &'a str {
-      ```
+    对于第二条规则，因为这里正好只有一个输入生命周期参数所以是适用的。第二条规则表明输入参数的生命周期将被赋予输出生命周期参数，所以现在签名看起来像这样：
 
-      现在这个函数签名中的所有引用都有了生命周期，如此编译器可以继续它的分析而无须程序员标记这个函数签名中的生命周期。
+    ```rust
+    fn first_word<'a>(s: &'a str) -> &'a str {
+    ```
 
-    + 这次从没有生命周期参数的`longest`函数开始
+    现在这个函数签名中的所有引用都有了生命周期，如此编译器可以继续它的分析而无须程序员标记这个函数签名中的生命周期。
 
-      ```rust
-      fn longest(x: &str, y: &str) -> &str {
-      ```
+  + 这次从没有生命周期参数的`longest`函数开始
 
-      再次假设我们自己就是编译器并应用第一条规则：每个引用参数都有其自己的生命周期。这次有两个参数，所以就有两个（不同的）生命周期：
+    ```rust
+    fn longest(x: &str, y: &str) -> &str {
+    ```
 
-      ```rust
-      fn longest<'a, 'b>(x: &'a str, y: &'b str) -> &str {
-      ```
+    再次假设我们自己就是编译器并应用第一条规则：每个引用参数都有其自己的生命周期。这次有两个参数，所以就有两个（不同的）生命周期：
 
-      再来应用第二条规则，因为函数存在多个输入生命周期，它并不适用于这种情况。再来看第三条规则，它同样也不适用，这是因为没有 `self` 参数。应用了三个规则之后编译器还没有计算出返回值类型的生命周期。这就是为什么在编译代码时会出现错误的原因：编译器使用所有已知的生命周期省略规则，仍不能计算出签名中所有引用的生命周期。
+    ```rust
+    fn longest<'a, 'b>(x: &'a str, y: &'b str) -> &str {
+    ```
 
-      因为第三条规则真正能够适用的就只有方法签名，现在就让我们看看那种情况中的生命周期，并看看为什么这条规则意味着我们经常不需要在方法签名中标注生命周期。
+    再来应用第二条规则，因为函数存在多个输入生命周期，它并不适用于这种情况。再来看第三条规则，它同样也不适用，这是因为没有 `self` 参数。应用了三个规则之后编译器还没有计算出返回值类型的生命周期。这就是为什么在编译代码时会出现错误的原因：编译器使用所有已知的生命周期省略规则，仍不能计算出签名中所有引用的生命周期。
+
+    因为第三条规则真正能够适用的就只有方法签名，现在就让我们看看那种情况中的生命周期，并看看为什么这条规则意味着我们经常不需要在方法签名中标注生命周期。
 
 #### 10.4.8 方法定义中的生命周期标注
 
@@ -6362,7 +6378,7 @@ fn generate_workout(intensity: u32, random_number: u32) {
 
 
 
-## 14、进一步认识Cargo及crates.io
+## 14、进一步认识 Cargo 及 crates.io
 
 ### 14.1 使用发布配置（release profile）来定制构建
 
@@ -6397,7 +6413,7 @@ fn generate_workout(intensity: u32, random_number: u32) {
 
 
 
-### 14.2 将包发布到crates.io上
+### 14.2 将包发布到 crates.io 上
 
 #### 14.2.1 crates.io
 
@@ -9060,5 +9076,548 @@ fn main() {
 
 ## 19、高级特性
 
+### 19.1 不安全 Rust
 
++ Rust 中隐藏着第二个语言，它没有强制内存安全保证：Unsafe Rust（不安全的 Rust）
+  + 和普通的 Rust 一样，但提供了额外的“超能力”
++ Unsafe Rust 存在的原因
+  + 静态分析是保守的
+    + 使用 Unsafe Rust：我知道自己在做什么，并承担相应的风险
+  + 计算机硬件本身就是不安全的，Rust 需要能够进行底层系统编程
+
+#### 19.1.1 Unsafe 超能力
+
++ 使用`unsafe`关键字来切换到 unsafe Rust，开启一个块，里面放着 unsafe 代码
++ Unsafe Rust 里可执行的四个动作（Unsafe 超能力）
+  + 解引用原始指针
+  + 调用 unsafe 函数或方法
+  + 访问或修改可变的静态变量
+  + 实现 unsafe trait
++ 注意
+  + unsafe 并没有关闭借用检查或停用其它安全检查
+  + 任何内存安全相关的错误必须留在 unsafe 块里
+  + 尽可能隔离 unsafe 代码，最好将其封装在安全的抽象里，提供安全的 API
+
+#### 19.1.2 解引用原始指针（裸指针 / Raw Pointer）
+
++ 原始指针
+
+  + 可变的：`*mut T`
+  + 不可变的：`*const T`。意味着指针在解引用后不能直接对其进行赋值
+  + 注意：这里的`*`不是解引用符号，它是类型名的一部分
+
++ 与引用不同，原始指针
+
+  + 允许通过同时具有不可变和可变指针或多个指向同一位置的可变指针来忽略借用规则
+  + 无法保证能指向合理的内存
+  + 允许为 null
+  + 不实现任何自动清理
+
++ 放弃保证的安全，换取更好的性能 / 与其它语言或硬件接口的能力
+
+  ```rust
+  fn main() {
+      let mut num = 5;
+  
+      let r1 = &num as *const i32;
+      let r2 = &mut num as *mut i32;
+  
+      // println!("r1: {}", *r1); // dereference of raw pointer is unsafe and requires unsafe function or block
+      // println!("r2: {}", *r2);
+      unsafe {
+          println!("r1: {}", *r1);
+          println!("r2: {}", *r2);
+      }
+  
+      let address = 0x012345usize;
+      let r = address as *const i32;
+      unsafe {
+          println!("r: {}", *r); // error: process didn't exit successfully: `target\debug\unsafe_demo.exe` (exit code: 0xc0000005, STATUS_ACCESS_VIOLATION)
+      }
+  }
+  ```
+
++ 为什么要使用原始指针？
+
+  + 与C语言进行接口
+  + 构建借用检查器无法理解的安全抽象
+
+#### 19.1.3 调用 unsafe 函数或方法
+
++ unsafe 函数或方法：在定义前加上了 unsafe 关键字
+
+  + 调用前需要手动满足一些条件（主要看文档），因为 Rust 无法对这些条件进行验证
+  + 需要在 unsafe 块（包括函数和方法）里进行调用
+
+  ```rust
+  unsafe fn dangerous() {
+  
+  }
+  
+  fn main() {
+      unsafe {
+          dangerous()
+      }
+      dangerous() // call to unsafe function is unsafe and requires unsafe function or block
+  }
+  ```
+
+##### 创建 unsafe 代码的安全抽象
+
++ 函数包含 unsafe 代码并不意味着需要将整个函数标记为 unsafe
+
++ 将 unsafe 代码包裹在安全函数中是一个常见的抽象
+
+  ```rust
+  fn split_at_mut(slice: &mut [i32], mid: usize) -> (&mut [i32], &mut [i32]) {
+      let len = slice.len();
+  
+      assert!(mid <= len);
+  
+      (&mut slice[..mid], &mut slice[mid..]) // cannot borrow `*slice` as mutable more than once at a time
+  }
+  ```
+
+  ```rust
+  use std::slice;
+  
+  fn split_at_mut(slice: &mut [i32], mid: usize) -> (&mut [i32], &mut [i32]) {
+      let len = slice.len();
+      // let ptr = slice.len() as *mut i32;
+      let ptr = slice.as_mut_ptr();
+  
+      assert!(mid <= len);
+  
+      unsafe {
+          (
+              slice::from_raw_parts_mut(ptr, mid),
+              slice::from_raw_parts_mut(ptr.add(mid), len - mid),
+          )
+      }
+  }
+  
+  fn main() {
+      let mut v = vec![1, 2, 3, 4, 5, 6];
+  
+      let r = &mut v[..];
+      let (a, b) = r.split_at_mut(3);
+      assert_eq!(a, &mut [1, 2, 3]);
+      assert_eq!(b, &mut [4, 5, 6]);
+  }
+  ```
+
+##### 使用 extern 函数调用外部代码
+
++ `extern`关键字：简化创建和使用外部函数接口（FFI）的过程
+
++ 外部函数接口（FFI，Foreign Function Interface）：它允许一种编程语言定义函数，并让其它编程语言能调用这些函数
+
+  ```rust
+  extern "C" {
+      fn abs(input: i32) -> i32;
+  }
+  
+  fn main() {
+      unsafe {
+          println!("Absolute value of -3 according to C: {}", abs(-3));
+      }
+  }
+  ```
+
++ 应用二进制接口（ABI，Application Binary Interface）：定义函数在汇编层面的调用方式
+
++ `"C"`ABI是最常见的 ABI，它遵循C语言的ABI
+
+##### 从其它语言调用 Rust 函数
+
++ 可以使用`extern`创建接口，其它语言通过它们可以调用 Rust 函数
+
++ 在`fn`前添加`extern`关键字，并指定 ABI
+
++ 还需要添加`#[no_mangle]`注解：避免 Rust 在编译时改变它的名称
+
+  ```rust
+  #[no_mangle]
+  pub extern "C" fn call_from_c() {
+      println!("Just called a Rust function from C!");
+  }
+  
+  fn main() {
+  
+  }
+  ```
+
+#### 19.1.4 访问或修改一个可变静态变量
+
++ Rust 支持全局变量，但因为所有权机制可能产生某些问题，例如数据竞争
+
++ 在 Rust 里，全局变量叫做静态（static）变量
+
+  ```rust
+  static HELLO_WORLD: &str = "hello world!";
+  
+  fn main() {
+      println!("name is: {}", HELLO_WORLD);
+  }
+  ```
+
+##### 静态变量
+
++ 静态变量与常量类似
++ 命名：SCREAMING_SNAKE_CASE
++ 必须标注类型
++ 静态变量只能存储`'static`生命周期的引用，无需显示标注
++ 访问不可变静态变量是安全的
+
+##### 常量和不可变静态变量的区别
+
++ 静态变量：有固定的内存地址，使用它的值总会访问同样的数据
+
++ 常量：允许使用它们的时候对数据进行复制
+
++ 静态变量：可以是可变的，访问和修改静态可变变量是不安全（unsafe）的
+
+  ```rust
+  static mut COUNTER: u32 = 0;
+  
+  fn add_to_count(inc: u32) {
+      unsafe {
+          COUNTER += inc;
+      }
+  }
+  
+  fn main() {
+      add_to_count(3);
+  
+      unsafe {
+          println!("COUNTER: {}", COUNTER);
+      }
+  }
+  ```
+
+#### 19.1.5 实现不安全（unsafe）trait
+
++ 当某个 trait 中存在至少一个方法拥有编译器无法校验的不安全因素时，就称这个 trait 是不安全的
+
++ 声明 unsafe trait：在定义前加 unsafe 关键字
+
+  + 该 trait 只能在 unsafe 代码块中实现
+
+  ```rust
+  unsafe trait Foo {
+      // methods go here
+  }
+  
+  unsafe impl Foo for i32 {
+      // method implementations go here
+  }
+  
+  fn main() {
+  }
+  ```
+
+#### 19.1.6 何时使用 unsafe 代码
+
++ 编译器无法保证内存安全，保证 unsafe 代码的正确并不简单
++ 有充足的理由使用 unsafe 代码时，就可以这样做
++ 通过显式标记 unsafe，可以在出现问题时轻松地定位
+
+
+
+### 19.2 高级 Trait
+
+#### 19.2.1 在trait的定义中使用关联类型指定占位类型
+
++ 关联类型（associated type）是 trait 中的类型占位符，它可以用于 trait 的方法签名中
+
+  + 可以定义出包含某些类型的 trait，而在实现前无需知道这些类型是什么
+
+  ```rust
+  pub trait Iterator {
+      type Item;
+      
+      fn next(&mut self) -> Option<Self::Item>;
+  }
+  ```
+
+##### 关联类型与泛型的区别
+
+|                        泛型                        |             关联类型             |
+| :------------------------------------------------: | :------------------------------: |
+|             每次实现 trait 时标注类型              |           无需标注类型           |
+| 可以为一个类型多次实现某个 trait（不同的泛型参数） | 无法为单个类型多次实现某个 trait |
+
+```rust
+pub trait Iterator {
+    type Item;
+    
+    fn next(&mut self) -> Option<Self::Item>;
+}
+
+pub trait Iterator2<T> {
+    fn next(&mut self) -> Option<T>;
+}
+
+struct Counter {}
+
+impl Iterator for Counter {
+    type Item = u32;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        None
+    }
+}
+
+// impl Iterator for Counter { // conflicting implementations of trait `Iterator` for type `Counter`
+//     type Item = u32;
+
+//     fn next(&mut self) -> Option<Self::Item> {
+//         None
+//     }
+// }
+
+impl Iterator2<String> for Counter {
+    fn next(&mut self) -> Option<String> {
+        None
+    }
+}
+
+impl Iterator2<u32> for Counter {
+    fn next(&mut self) -> Option<u32> {
+        None
+    }
+}
+```
+
+#### 19.2.2 默认泛型参数和运算符重载
+
++ 可以在使用泛型参数时为泛型指定一个默认的具体类型
+
++ 语法：`<PlaceholderType = ConcreteType`
+
++ 这种技术常用于运算符重载（operator overloading）
+
++ Rust 不允许创建自己的运算符及重载任意的运算符
+
++ 但可以通过实现`std::ops`中列出的那些 trait 来重载一部分相应的运算符
+
+  ```rust
+  use std::ops::Add;
+  
+  #[derive(Debug, PartialEq)]
+  struct Point {
+      x: i32, 
+      y: i32,
+  }
+  
+  impl Add for Point {
+      type Output = Point;
+  
+      fn add(self, other: Point) -> Point {
+          Point {
+              x: self.x + self.x,
+              y: self.y + self.y,
+          }
+      }
+  }
+  
+  fn main() {
+      assert_eq!(Point{ x: 1, y: 0 } + Point { x: 2, y: 3 }, 
+          Point { x: 3, y: 3 });
+  }
+  ```
+
+  ```rust
+  use std::ops::Add;
+  
+  struct Millimeters(u32);
+  struct Meters(u32);
+  
+  impl Add<Meters> for Millimeters {
+      type Output = Millimeters;
+  
+      fn add(self, other: Meters) -> Millimeters {
+          Millimeters(self.0 + (other.0 * 1000))
+      }
+  }
+  
+  fn main() {
+  }
+  ```
+
+##### 默认泛型参数的主要应用场景
+
++ 扩展一个类型而不破坏现有代码
++ 允许在大部分用户都不需要的特定场景下进行自定义
+
+#### 19.2.3 用于消除歧义的完全限定语法（Fully Qualified Syntax）：调用相同名称的方法
+
++ Rust既不会阻止两个trait拥有相同名称的方法，也不会阻止你为同一个类型实现这样的两个trait。你甚至可以在这个类型上直接实现与trait方法同名的方法。
+
+    ```rust
+    trait Pilot {
+        fn fly(&self);
+    }
+    
+    trait Wizard {
+        fn fly(&self);
+    }
+    
+    struct Human;
+    
+    impl Pilot for Human {
+        fn fly(&self) {
+            println!("This is your captain speaking.");
+        }
+    }
+    
+    impl Wizard for Human {
+        fn fly(&self) {
+            println!("Up!")
+        }
+    }
+    
+    impl Human {
+        fn fly(&self) {
+            println!("*waving arms furiously*");
+        }
+    }
+    
+    fn main() {
+        let person = Human;
+        person.fly();
+        Pilot::fly(&person);
+        Wizard::fly(&person);
+    }
+    ```
+    
+    运行这段代码会打印出 *waving arms furiously*，它表明Rust调用了直接实现在 Human 类型上的 fly 方法。为了调用实现在 Pilot trait 或 Wizard trait中 的 fly 方法，我们需要使用更加显式的语法来指定具体的fly方法。在方法名的前面指定trait 名称向 Rust 清晰地表明了我们想要调用哪个 fly 实现。另外，你也可以使用类似的 Human::fly(&person) 语句，使用 person.fly() 在行为上等价，但会稍微冗长一些。
+    
+    当你拥有两种实现了同一trait的类型时，对于fly等需要接收self作为参数的方法，Rust可以自动地根据self的类型推导出具体的trait实现。然而，因为trait中的关联函数没有self参数，所以当在同一作用域下有两个实现了此种trait的类型时，Rust无法推导出你究竟想要调用哪一个具体类型，除非使用完全限定语法（fully qualified syntax）。
+
+    ```rust
+    trait Animal {
+        fn baby_name() -> String;
+    }
+    
+    struct Dog;
+    
+    impl Dog {
+        fn baby_name() -> String {
+            String::from("Spot")
+        }
+    }
+    
+    impl Animal for Dog {
+        fn baby_name() -> String {
+            String::from("puppy")
+        }
+    }
+    
+    fn main() {
+        println!("A baby dog is called a {}", Dog::baby_name());
+        println!("A baby dog is called a {}", Animal::baby_name()); // cannot call associated function on trait without specifying the corresponding `impl` type
+    }
+    ```
+
+    我们希望的是调用在Dog上实现的Animal trait的baby_name函数来打印出A baby dog is called a puppy。指定trait名称的技术无法解决这一需求，将main函数修改为`Animal::baby_name()`会导致编译时错误。由于Animal::baby_name是一个没有self参数的关联函数而不是方法，所以Rust无法推断出我们想要调用哪一个Animal::baby_name的实现。为了消除歧义并指示Rust使用Dog为Animal trait实现的baby_name函数，我们需要使用完全限定语法。
+    
++ 完全限定语法：`<Type as Trait>::function(receiver_if_method, netx_arg, ...);`
+
+    + 可以在任何调用函数或方法的地方使用
+    + 允许忽略那些从其它上下文能推导出来的部分
+    + 当 Rust 无法区分你期望调用哪个具体实现的时候，才需要使用这种语法
+
+    ```rust
+    trait Animal {
+        fn baby_name() -> String;
+    }
+    
+    struct Dog;
+    
+    impl Dog {
+        fn baby_name() -> String {
+            String::from("Spot")
+        }
+    }
+    
+    impl Animal for Dog {
+        fn baby_name() -> String {
+            String::from("puppy")
+        }
+    }
+    
+    fn main() {
+        println!("A baby dog is called a {}", Dog::baby_name());
+        println!("A baby dog is called a {}", <Dog as Animal>::baby_name());
+    }
+    ```
+
+#### 19.2.4 使用 supertrait 来要求 trait 附带其它 trait 的功能
+
++ 需要在一个 trait 中使用其它 trait 的功能
+
+  + 需要被依赖的 trait 也被实现
+  + 那个被间接依赖的 trait 就是当前 trait 的 supertrait
+
+  ```rust
+  use std::fmt;
+  
+  trait OutlinePrint: fmt::Display {
+      fn outline_print(&self) {
+          let output = self.to_string();
+          let len = output.len();
+          println!("{}", "*".repeat(len + 4));
+          println!("*{}*", " ".repeat(len + 2));
+          println!("* {} *", output);
+          println!("*{}*", " ".repeat(len + 2));
+          println!("{}", "*".repeat(len + 4));
+      }
+  }
+  
+  struct Point {
+      x: i32,
+      y: i32,
+  }
+  
+  impl OutlinePrint for Point {} // `Point` doesn't implement `std::fmt::Display`
+  
+  impl fmt::Display for Point {
+      fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+          write!(f, "({}, {})", self.x, self.y)
+      }
+  }
+  
+  fn main() {
+  }
+  ```
+
+#### 19.2.5 使用 newtype 模式在外部类型上实现外部 trait
+
++ 孤儿规则：只有当 trait 或类型定义在本地包时，才能为该类型实现这个 trait
+
++ 可以通过`newtype`模式来绕过这一规则
+
+  + 利用`tuple struct`创建一个新的类型
+
+  ```rust
+  use std::fmt;
+  
+  struct Wrapper(Vec<String>);
+  
+  impl fmt::Display for Wrapper {
+      fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+          write!(f, "[{}]", self.0.join(", "))
+      }
+  }
+  
+  fn main() {
+      let w = Wrapper(vec![String::from("hello"), String::from("world")]);
+      println!("w = {}", w);
+  }
+  ```
+
+
+
+### 19.3 高级类型
 
