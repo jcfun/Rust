@@ -9959,3 +9959,87 @@ fn generic<T: ?Sized>(t: &T) {
 
 #### 19.5.3 基于属性来生成代码的过程宏
 
++ 这种形式更像函数（某种形式的过程）一些
+
+  + 接受并操作输入的 Rust 代码
+  + 生成另外一些 Rust 代码作为结果
+
++ 三种过程宏
+
+  + 自定义派生
+  + 属性宏
+  + 函数宏
+
++ 创建过程宏时
+
+  + 宏定义必须单独放在它们自己的包中，并使用特殊的包类型
+
+  **src/lib.rs**
+
+  ```rust
+  use proc_macro;
+  
+  #[some_attribute]
+  pub fn some_name(input: TokenStream) -> TokenStream {
+      
+  }
+  ```
+
+#### 19.5.4 自定义 derive 宏
+
+##### 需求
+
++ 创建一个 hello_macro 包，定义一个拥有关联函数 hello_macro 的 HelloMacro trait
++ 提供一个能自动实现 trait 的过程宏
++ 在它们的类型上标注`#[derive(HelloMacro)]`，进而得到 hello_macro 的默认实现
+
+......
+
+#### 19.5.5 类似属性的宏
+
++ 属性宏与自定义`derive`宏类似
+
+  + 允许创建新的属性
+  + 但不是为`derive`属性生成代码
+
++ 属性宏更加灵活
+
+  + `derive`只能用于 struct 和 enum
+  + 属性宏可以用于任意条目，例如函数
+
+  ```rust
+  #[route(GET, "/")]
+  fn index() {
+      
+  // 这个#[route]属性是由框架本身作为一个过程宏来定义的，这个宏定义的函数签名如下所示：
+  
+  #[proc_macro_attribute]
+  pub fn route(attr: TokenStream, item: TokenStream) -> TokenStream
+  {
+  ```
+
+  上面的代码中出现了两个类型为`TokenStream`的参数。前者是属性本身的内容，也就是本例中的Get, "/"部分，而后者则是这个属性所附着的条目，也就是本例中的fn index() {}及剩下的函数体。
+
+  除此之外，属性宏与自定义派生宏的工作方式几乎一样：它们都需要创建一个proc-macro类型的包并提供生成相应代码的函数。
+
+#### 19.5.6 类似函数的宏
+
++ 函数宏定义类似于函数调用的宏，但比普通函数更加灵活
+
++ 函数宏可以接受`TokenStream`作为参数
+
++ 与另外两种过程宏一样，在定义中使用 Rust 代码来操作`TokenStream`
+
+  ```rust
+  let sql = sql!(SELECT * FROM posts WHERE id=1);
+  
+  // 这个宏会解析圆括号内的SQL语句并检验它在语法上的正确性，这一处理过程所做的比macro_rules! 宏可以完成的任务要复杂得多。此处的sql! 可以被定义为如下所示的样子：
+  
+  #[proc_macro]
+  pub fn sql(input: TokenStream) -> TokenStream {
+  ```
+
+
+
+## 20、最后的项目：多线程 Web 服务器
+
