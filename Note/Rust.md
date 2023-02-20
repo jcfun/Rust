@@ -8258,7 +8258,6 @@ note: required by a bound in `spawn`
           }
       }
   }
-  // 泛型实现
   
   
   pub struct Button {
@@ -8273,9 +8272,9 @@ note: required by a bound in `spawn`
       }
   }
   ```
-
+  
   **src/main.rs**
-
+  
   ```rust
   use oop_demo::{Draw, Screen, Button};
   
@@ -9620,4 +9619,343 @@ impl Iterator2<u32> for Counter {
 
 
 ### 19.3 高级类型
+
+#### 19.3.1 使用 newtype 模式实现类型安全和抽象
+
++ newtype 模式可以
+  + 用来静态额保证各种值之间不会混淆并表明值的单位
+  + 为类型的某些细节提供抽象能力
+  + 通过轻量级的封装来隐藏内部实现细节
+
+#### 19.3.2 使用类型别名创建类型同义词
+
++ Rust 提供了类型别名的功能
+
+  + 为现有类型生产另外的名称（同义词）
+  + 并不是一个独立的类型
+  + 使用`type`关键字
+
++ 主要用途：减少代码字符重复
+
+  ```rust
+  type Kilometers = i32;
+  
+  fn main() {
+      let x: i32 = 5;
+      let y: Kilometers = 5;
+      println!("x + y = {}", x + y);
+  }
+  ```
+
+  ```rust
+  type Thunk = Box<dyn Fn() + Send + 'static>;
+  
+  fn take_long_type(f: Thunk) {
+      // --snip--
+  }
+  
+  fn returns_long_type() -> Thunk {
+      Box::new(|| println!("Hi"))
+  }
+  
+  fn main() {
+      let f: Thunk = Box::new(|| println!("Hi"));
+  }
+  ```
+
+  ```rust
+  // use std::io::Error;
+  // type Result<T> = Result<T, std::io::Error>
+  use std::fmt;
+  
+  type Result<T> = std::io::Result<T>;
+  
+  pub trait Write {
+      fn write(&mut self, buf: &[u8]) -> Result<usize>;
+      fn flush(&mut self) -> Result<()>;
+  
+      fn write_all(&mut self, buf: &[u8]) -> Result<()>;
+      fn write_fmt(&mut self, fmt: fmt::Arguments) -> Result<()>;
+  }
+  
+  fn main() {
+  }
+  ```
+
+#### 19.3.3 Never类型
+
++ 有一个名为`!`的特殊类型
+
+  + 它没有任何值，行话称为空类型（empty type）
+  + 我们倾向于叫它`never类型`，因为它在不返回的函数中充当返回类型
+
++ 不返回值的函数也被称作发散函数就（diverging function）
+
+  ```rust
+  fn bar() -> ! { // mismatched types, expected `!`, found `()`
+  
+  }
+  ```
+
+  这段代码可以读作“函数bar永远不会返回值”。不会返回值的函数也被称作发散函数 （diverging function）。我们不可能创建出类型为!的值来让bar返回。
+
+  ```rust
+  fn main() {
+      let guess = "";
+  
+      loop {
+          let guess: u32 = match guess.trim().parse() {
+              Ok(num) => num,
+              Err(_) => continue,
+          };
+      }
+  }
+  ```
+
+  continue的返回类型是!。当Rust计算guess的类型时，它会发现在可用于匹配的两个分支中，前者的返回类型为u32而后者的返回类型为!。因为!无法产生一个可供返回的值，所以Rust采用了u32作为guess的类型。
+
+  对于此类行为，还有另外一种更加正式的说法：类型!的表达式可以被强制转换为其他的任意类型。我们之所以能够使用continue来结束match分支，是因为continue永远不会返回值；相反地，它会将程序的控制流转移至上层循环。因此，这段代码在输入值为Err的情况下不会对guess进行赋值。
+
+  ```rust
+  impl<T> Option<T> {
+      pub fn unwrap(self) -> T {
+          match self {
+              Some(val) => val,
+              None => panic!("called `Option::unwrap()` on a `None` value"),
+          }
+      }
+  }
+  ```
+
+  这段代码中发生的行为类似于上例中match的行为：Rust注意到val拥有类型T，而panic! 则拥有返回类型!，所以整个match表达式的返回类型为T。这段代码之所以可以正常工作，是因为panic! 只会中断当前的程序而不会产生值。因为我们不会在None的情况下为unwrap返回一个值，所以这段代码是合法的。
+
+  ```rust
+  fn main() {
+      print!("forever ");
+  
+      loop {
+          print!("and ever ");
+      }
+  }
+  ```
+
+  由于loop循环永远不会结束，所以这个表达式以!作为自己的返回类型。当然，循环中也可能会存在break指令，并会在逻辑执行至break时中止。
+
+#### 19.3.4 动态大小类型和 Sized trait
+
++ Rust 需要在编译时确定为一个特定类型的值分配多少空间
+
++ 动态大小的类型（Dynamically Sized Types，DST）的概念：
+
+  + 编写代码时使用只有在运行时才能确定大小的值
+
++ `str`时动态大小的类型（不是 `&str`）：只有运行时才能确定字符串的长度
+
+  + 下面的代码无法正常工作
+
+    ```rust
+    let s1: str = "Hello there!";
+    let s2: str = "How's it going?";
+    ```
+
+  + 使用`&str`来解决
+
+    + `str`的地址
+    + `str`的长度
+
+##### Rust 使用动态大小类型的通用方式
+
++ 附带一些额外的元数据来存储动态信息的大小
+  + 使用动态大小类型时总会把它的值放在某种指针后面
+
+##### 另一种动态大小的类型：trait
+
++ 每个 trait 都是一个动态大小的类型，可以通过名称对其进行引用
++ 为了将 trait 用作 trait对象，必须将它放置在某种指针之后
+  + 例如`&dyn Trait`或`Box<dyn Trait>(Rc<dyn Trait)`之后
+
+##### Sized trait
+
++ 为了处理动态大小的类型，Rust 提供了一个 Sized trait 来确定一个类型的大小在编译时是否已知
+
+  + 编译时可计算出大小的类型会自动实现这一 trait
+  + Rust 还会为每一个泛型函数隐式的添加 Sized 约束
+
+  ```rust
+  fn generic<T>(t: T) {
+      // --略
+  }
+  
+  // 实际上会被隐式地转换为：
+  
+  fn generic<T: Sized>(t: T) {
+      // --略
+  }
+  ```
+
++ 默认情况下，泛型函数只能被用于编译时已经知道大小的类型，可以通过特殊语法解除这一限制
+
+##### ?Sized trait 约束
+
+```rust
+fn generic<T: ?Sized>(t: &T) {
+    // --略
+}
+```
+
+?Sized trait约束表达了与Sized相反的含义，我们可以将它读作“T可能是也可能不是Sized的”。这个语法只能被用在Sized上，而不能被用于其他trait。
+
+另外还需要注意的是，我们将t参数的类型由T修改为了&T。因为类型可能不是Sized的，所以我们需要将它放置在某种指针的后面。在本例中，我们选择使用引用。
+
+
+
+### 19.4 高级函数与闭包
+
+#### 19.4.1 函数指针
+
++ 可以将函数传递给其它函数
+
++ 函数在传递过程中会被强制转换为`fn`类型
+
+  ```rust
+  fn add_one(x: i32) -> i32 {
+      x + 1
+  }
+  
+  fn do_twice(f: fn(i32) -> i32, arg: i32) -> i32 {
+      f(arg) + f(arg)
+  }
+  
+  fn main() {
+      let answer = do_twice(add_one, 5);
+  
+      println!("The answer is: {}", answer);
+  }
+  ```
+
+##### 函数指针与闭包的不同
+
++ `fn`是一个类型，不是一个 trait
+
+  + 可以直接指定`fn`为参数类型，不用声明一个以`Fn trait`为约束的泛型参数
+
++ 函数指针实现了全部 3 中闭包 trait（Fn, FnMut, FnOnce）
+
+  + 总是可以把函数指针作为参数传递给一个接受闭包的函数
+  + 所以，倾向于搭配闭包 trait 的泛型来编写函数：可以同时接受闭包和普通函数
+
++ 某些情景，只想接受`fn`而不接收闭包
+
+  + 与外部不支持闭包的代码交互：C 函数
+
+  ```rust
+  let list_of_numbers = vec![1, 2, 3];
+  let list_of_strings: Vec<String> = list_of_numbers
+      .iter()
+      .map(|i| i.to_string())
+      .collect();
+  
+  // 我们也可以使用一个函数作为map的参数，如下所示：
+  
+  let list_of_numbers = vec![1, 2, 3];
+  let list_of_strings: Vec<String> = list_of_numbers
+      .iter()
+      .map(ToString::to_string)
+      .collect();
+  ```
+
+  ```rust
+  enum Status {
+          Value(u32),
+          Stop,
+      }
+      
+  let list_of_statuses: Vec<Status> =
+      (0u32..20)
+      .map(|x| Status::Value(x))
+      .collect();
+  
+  let list_of_statuses: Vec<Status> =
+      (0u32..20)
+      .map(Status::Value)
+      .collect();
+  ```
+
+  这段代码使用Status::Value的构造器调用了map方法，从而为范围中的每一个u32值创建了对应的Status::Value实例。在实际编程中，有一些人倾向于使用这种风格，而另外一些人则喜欢使用闭包。这两种形式最终都会编译出同样的代码，你完全可以按照自己的喜好决定使用哪种风格。
+
+#### 19.4.2 返回闭包
+
++ 闭包使用 trait 进行表达，无法在函数中直接返回一个闭包，可以将一个实现了该 trait 的具体类型作为返回值
+
+  ```rust
+  fn returns_closure() -> Fn(i32) -> i32 { // does not have a constant size known at compile-time, trait objects must include the `dyn` keyword
+      |x| x + 1
+  }
+  ```
+
+  这段错误提示信息再次指向了Sized trait！Rust无法推断出自己需要多大的空间来存储此处返回的闭包。幸运的是，我们已经在之前的章节中接触过了解决这一问题的方法，那就是使用trait对象：
+
+  ```rust
+  fn returns_closure() -> Box<dyn Fn(i32) -> i32> {
+      Box::new(|x| x + 1)
+  }  
+  ```
+
+  
+
+### 19.5 宏（macro）
+
++ 宏在 Rust 里指的是一组相关特性的集合称谓
+  + 使用 `macro_rules!`构建的声明宏（declarative macro）
+  + 3 种过程宏（procedural macro）
+    + 自定义`#[derive]`宏，用于 struct 或 enum，可以为其指定随`derive`属性添加的代码
+    + 类似属性的宏，在任何条目上添加自定义属性
+    + 类似函数的宏，看起来像函数调用，对其指定为参数的token进行操作
+
+#### 19.5.1 函数与宏的差别
+
++ 本质上，宏是用来编写可以生成其它代码的代码（元编程，metaprogramming）
++ 函数在定义签名时，必须声明参数的个数和类型，宏可以处理可变的参数
++ 编译器会在解释代码前展开宏
++ 宏的定义比函数复杂得多，难以阅读、理解、维护
++ 在某个文件调用宏时，必须提前定义宏或将宏引入当前作用域
++ 函数可以在任何位置定义并在任何位置使用
+
+#### 19.5.2 用于通用元编程的macro_rules! 声明宏（弃用）
+
++ Rust 中常见的宏形式：声明宏
+
+  + 类似 match 的模式匹配
+  + 需要使用`macro_rules!`
+
+  ```rust
+  // let v: Vec<u32> = vec![1, 2, 3];
+  
+  #[macro_export]
+  macro_rules! vec {
+      ($($x:expr),*) => {
+          {
+              let mut temp_vec = Vec::new();
+              $(
+                  temp_vec.push($x);
+              )*
+              temp_vec
+          }
+      };
+  }
+  ```
+
+  代码中标注的#[macro_export] 意味着这个宏会在它所处的包被引入作用域后可用。缺少了这个标注的宏则不能被引入作用域。
+
+  调用宏会生成如下所示的代码来替换调用语句：
+
+  ```rust
+  let mut temp_vec = Vec::new();
+  temp_vec.push(1);
+  temp_vec.push(2);
+  temp_vec.push(3);
+  temp_vec
+  ```
+
+#### 19.5.3 基于属性来生成代码的过程宏
 
