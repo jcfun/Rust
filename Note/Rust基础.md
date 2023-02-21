@@ -7894,7 +7894,7 @@ fn main() {
 + Go 语言的名言：不要用共享内存来通信，要用通信来共享内存
 + Rust 支持通过共享状态来实现并发
 + `Channel`类似单所有权：一旦将值的所有权转移至`Channel`，就无法使用它了
-+ 共享内存并发类似多所有权：多个线程可以同时访问同一块内存
++ 共享内存并发类似多重所有权：多个线程可以同时访问同一块内存
 
 #### 16.3.1 使用互斥体（Mutex / Mutual Exclusion）来每次只允许一个线程来访问数据
 
@@ -7978,7 +7978,7 @@ error[E0382]: use of moved value: `counter`
    |                           ------- use occurs due to use in closure
 ```
 
-错误提示信息指出，counter被移动到了handle指代的线程中。而这一移动行为阻止了我们在第二个线程中调用lock来再次捕获counter。 Rust提醒我们不应该将counter的所有权移动到多个线程中。
+错误提示信息指出，counter被移动到了handle指代的线程中。而这一移动行为阻止了我们在第二个线程中调用lock来再次捕获counter。 Rust 提醒我们不应该将counter的所有权移动到多个线程中。
 
 ##### 多线程与多重所有权
 
@@ -8009,7 +8009,7 @@ fn main() {
 }
 ```
 
-这里我们借助于智能指针Rc<T>提供的引用计数为单个值赋予了多个所有者，但是却有另外的问题。
+这里我们借助于智能指针`Rc<T>`提供的引用计数为单个值赋予了多个所有者，但是却有另外的问题。
 
 ```shell
 error[E0277]: `Rc<Mutex<i32>>` cannot be sent between threads safely
@@ -10042,4 +10042,420 @@ fn generic<T: ?Sized>(t: &T) {
 
 
 ## 20、最后的项目：多线程 Web 服务器
+
++ 在 socket 上监听 TCP 连接
++ 解析少量的 HTTP 请求
++ 创建一个合适的 HTTP 响应
++ 使用线程池改进服务器的吞吐量
++ 注意：并不是最佳实践
+
+### 20.1 构建单线程 Web 服务器
+
+```rust
+use std::{
+    fs,
+    io::{Read, Write},
+    net::{TcpListener, TcpStream},
+};
+
+fn main() {
+    let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
+    for stream in listener.incoming() {
+        let stream = stream.unwrap();
+
+        // println!("Connection established");
+        handle_connection(stream);
+    }
+}
+
+fn handle_connection(mut stream: TcpStream) {
+    let mut buffer = [0; 512];
+
+    stream.read(&mut buffer).unwrap();
+
+    println!("Request: {}", String::from_utf8_lossy(&buffer[..]));
+
+    /*
+        请求
+        Method Request-URI HTTP-Version CRLF
+        headers CRLF
+        message-body
+    */
+
+    /*
+        响应
+        HTTP-Version Status-Code Reason-Phrase CRLF
+        headers CRLF
+
+        message-body
+    */
+
+    let get = b"GET / HTTP/1.1\r\n";
+
+    let (status_line, filename) = if buffer.starts_with(get) {
+        ("HTTP/1.1 200 OK\r\n\r\n", "hello.html")
+    } else {
+        ("HTTP/1.1 404 NOT FOUNT\r\n\r\n", "404.html")
+    };
+
+    let contents = fs::read_to_string(filename).unwrap();
+    let response = format!("{}{}", status_line, contents);
+
+    println!("{}", response);
+
+    stream.write(response.as_bytes()).unwrap();
+    stream.flush().unwrap();
+}
+```
+
+### 20.2 把单线程服务器修改为多线程服务器
+
+**src/lib.rs**
+
+```rust
+use std::sync::{ mpsc, Arc, Mutex };
+use std::thread;
+
+pub struct ThreadPool {
+    workers: Vec<Worker>,
+    sender: mpsc::Sender<Job>,
+}
+
+impl ThreadPool {
+    /// 创建线程池。
+    ///
+    /// 线程池中线程的数量。
+    ///
+    /// # Panics
+    ///
+    /// `new` 函数在 size 为 0 时会 panic。
+    pub fn new(size: usize) -> ThreadPool {
+        assert!(size > 0);
+        let (sender, receiver) = mpsc::channel();
+        let receiver = Arc::new(Mutex::new(receiver));
+        let mut workers = Vec::with_capacity(size);
+
+        for id in 0..size {
+            // create some threads and store then in the vector
+            workers.push(Worker::new(id, Arc::clone(&receiver)));
+        }
+
+        ThreadPool { workers, sender }
+    }
+
+    pub fn execute<F>(&self, f: F)
+    where
+        F: FnOnce() + Send + 'static,
+    {
+        let job = Box::new(f);
+        self.sender.send(job).unwrap();
+    }
+}
+
+struct Worker {
+    id: usize,
+    thread: thread::JoinHandle<()>,
+}
+
+trait FnBox {
+    fn call_box(self: Box<Self>);
+}
+
+impl<F: FnOnce()> FnBox for F {
+    fn call_box(self: Box<Self>) {
+        (*self)()
+    }
+}
+
+// struct Job;
+type Job = Box<dyn FnBox + Send + 'static>;
+
+impl Worker {
+    fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Job>>>) -> Worker {
+        let thread = thread::spawn(move || loop {
+            let job = receiver.lock().unwrap().recv().unwrap();
+
+            println!("Worker {id} got a job; executing.");
+
+            job.call_box();
+        });
+
+        // let thread = thread::spawn(move || loop {
+        //     while let Ok(job) = receiver.lock().unwrap().recv() {
+        //         println!("Worker {} got a job; executing.", id);
+        //         job.call_box();
+        //     }
+        // });
+
+        Worker { id, thread }
+    }
+}
+```
+
+**src/main.rs**
+
+```rust
+use std::{
+    fs,
+    io::{Read, Write},
+    net::{TcpListener, TcpStream}, time::Duration, thread,
+};
+
+use web_server::ThreadPool;
+
+fn main() {
+    let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
+    let pool = ThreadPool::new(16);
+    
+    for stream in listener.incoming() {
+        let stream = stream.unwrap();
+
+        // println!("Connection established");
+        // thread::spawn(|| {
+        //     handle_connection(stream);
+        // });
+
+        pool.execute(|| {
+            handle_connection(stream);
+        })
+    }
+}
+
+fn handle_connection(mut stream: TcpStream) {
+    let mut buffer = [0; 512];
+
+    stream.read(&mut buffer).unwrap();
+
+    // println!("Request: {}", String::from_utf8_lossy(&buffer[..]));
+
+    /*
+        请求
+        Method Request-URI HTTP-Version CRLF
+        headers CRLF
+        message-body
+    */
+
+    /*
+        响应
+        HTTP-Version Status-Code Reason-Phrase CRLF
+        headers CRLF
+
+        message-body
+    */
+
+    let get = b"GET / HTTP/1.1\r\n";
+    let sleep = b"GET /sleep HTTP/1.1\r\n";
+
+    let (status_line, filename) = if buffer.starts_with(get) {
+        ("HTTP/1.1 200 OK\r\n\r\n", "hello.html")
+    } else if buffer.starts_with(sleep) {
+        thread::sleep(Duration::from_secs(5));
+        ("HTTP/1.1 200 OK\r\n\r\n", "hello.html")
+    }else {
+        ("HTTP/1.1 404 NOT FOUNT\r\n\r\n", "404.html")
+    };
+
+    let contents = fs::read_to_string(filename).unwrap();
+    let response = format!("{}{}", status_line, contents);
+
+    // println!("{}", response);
+
+    stream.write(response.as_bytes()).unwrap();
+    stream.flush().unwrap();
+}
+```
+
+### 20.3 优雅地停机与清理
+
+**src/lib.rs**
+
+```rust
+use std::sync::{mpsc, Arc, Mutex};
+use std::thread;
+
+enum Message {
+    NewJob(Job),
+    Terminate,
+}
+
+pub struct ThreadPool {
+    workers: Vec<Worker>,
+    sender: mpsc::Sender<Message>,
+}
+
+impl ThreadPool {
+    /// 创建线程池。
+    ///
+    /// 线程池中线程的数量。
+    ///
+    /// # Panics
+    ///
+    /// `new` 函数在 size 为 0 时会 panic。
+    pub fn new(size: usize) -> ThreadPool {
+        assert!(size > 0);
+        let (sender, receiver) = mpsc::channel();
+        let receiver = Arc::new(Mutex::new(receiver));
+        let mut workers = Vec::with_capacity(size);
+
+        for id in 0..size {
+            // create some threads and store then in the vector
+            workers.push(Worker::new(id, Arc::clone(&receiver)));
+        }
+
+        ThreadPool { workers, sender }
+    }
+
+    pub fn execute<F>(&self, f: F)
+    where
+        F: FnOnce() + Send + 'static,
+    {
+        let job = Box::new(f);
+        self.sender.send(Message::NewJob(job)).unwrap();
+    }
+}
+
+impl Drop for ThreadPool {
+    fn drop(&mut self) {
+        println!("Sending terminate message to all workers.");
+
+        for _ in &mut self.workers {
+            self.sender.send(Message::Terminate).unwrap();
+        }
+        println!("Shutting down all workers.");
+        
+        for worker in &mut self.workers {
+            println!("Shutting down worker {}", worker.id);
+
+            if let Some(thread) = worker.thread.take() {
+                thread.join().unwrap();
+            }
+        }
+    }
+}
+
+struct Worker {
+    id: usize,
+    thread: Option<thread::JoinHandle<()>>,
+}
+
+trait FnBox {
+    fn call_box(self: Box<Self>);
+}
+
+impl<F: FnOnce()> FnBox for F {
+    fn call_box(self: Box<Self>) {
+        (*self)()
+    }
+}
+
+// struct Job;
+type Job = Box<dyn FnBox + Send + 'static>;
+
+impl Worker {
+    fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Message>>>) -> Worker {
+        let thread = thread::spawn(move || loop {
+            let message = receiver.lock().unwrap().recv().unwrap();
+            match message {
+                Message::NewJob(job) => {
+                    println!("Worker {} got a job; executing.", id);
+                    job.call_box();
+                }
+                Message::Terminate => {
+                    println!("Worker {} was told to terminate.", id);
+                    break;
+                }
+            }
+        });
+
+        // let thread = thread::spawn(move || loop {
+        //     while let Ok(job) = receiver.lock().unwrap().recv() {
+        //         println!("Worker {} got a job; executing.", id);
+        //         job.call_box();
+        //     }
+        // });
+
+        Worker {
+            id,
+            thread: Some(thread),
+        }
+    }
+}
+```
+
+**src/main.rs**
+
+```rust
+use std::{
+    fs,
+    io::{Read, Write},
+    net::{TcpListener, TcpStream}, time::Duration, thread,
+};
+
+use web_server::ThreadPool;
+
+fn main() {
+    let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
+    let pool = ThreadPool::new(16);
+    
+    for stream in listener.incoming() {
+        let stream = stream.unwrap();
+
+        // println!("Connection established");
+        // thread::spawn(|| {
+        //     handle_connection(stream);
+        // });
+
+        pool.execute(|| {
+            handle_connection(stream);
+        })
+    }
+
+    println!("Shutting down.");
+}
+
+fn handle_connection(mut stream: TcpStream) {
+    let mut buffer = [0; 512];
+
+    stream.read(&mut buffer).unwrap();
+
+    // println!("Request: {}", String::from_utf8_lossy(&buffer[..]));
+
+    /*
+        请求
+        Method Request-URI HTTP-Version CRLF
+        headers CRLF
+        message-body
+    */
+
+    /*
+        响应
+        HTTP-Version Status-Code Reason-Phrase CRLF
+        headers CRLF
+
+        message-body
+    */
+
+    let get = b"GET / HTTP/1.1\r\n";
+    let sleep = b"GET /sleep HTTP/1.1\r\n";
+
+    let (status_line, filename) = if buffer.starts_with(get) {
+        ("HTTP/1.1 200 OK\r\n\r\n", "hello.html")
+    } else if buffer.starts_with(sleep) {
+        thread::sleep(Duration::from_secs(5));
+        ("HTTP/1.1 200 OK\r\n\r\n", "hello.html")
+    }else {
+        ("HTTP/1.1 404 NOT FOUNT\r\n\r\n", "404.html")
+    };
+
+    let contents = fs::read_to_string(filename).unwrap();
+    let response = format!("{}{}", status_line, contents);
+
+    // println!("{}", response);
+
+    stream.write(response.as_bytes()).unwrap();
+    stream.flush().unwrap();
+}
+```
+
+
 
