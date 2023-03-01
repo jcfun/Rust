@@ -1,5 +1,7 @@
+use crate::db_access::{ post_new_course_db, get_courses_for_teacher_db, get_course_detail_db };
+
 use super::state::AppState;
-use actix_web::{web, HttpResponse};
+use actix_web::{ web, HttpResponse };
 
 pub async fn health_check_handler(app_state: web::Data<AppState>) -> HttpResponse {
     let health_check_response = &app_state.health_check_response;
@@ -10,11 +12,10 @@ pub async fn health_check_handler(app_state: web::Data<AppState>) -> HttpRespons
 }
 
 use super::models::Course;
-use chrono::Utc;
 
 pub async fn new_course(
     new_course: web::Json<Course>,
-    app_state: web::Data<AppState>,
+    app_state: web::Data<AppState>
 ) -> HttpResponse {
     // println!("Received new course");
     // let course_count = app_state
@@ -35,13 +36,13 @@ pub async fn new_course(
 
     // app_state.courses.lock().unwrap().push(new_course);
     // HttpResponse::Ok().json("Course added")
-
-    HttpResponse::Ok().json("Success")
+    let course = post_new_course_db(&app_state.db, new_course.into()).await;
+    HttpResponse::Ok().json(course)
 }
 
 pub async fn get_courses_for_teacher(
     app_state: web::Data<AppState>,
-    params: web::Path<(usize, )>,
+    params: web::Path<(usize,)>
 ) -> HttpResponse {
     // let teacher_id: usize = params.0;
 
@@ -59,13 +60,14 @@ pub async fn get_courses_for_teacher(
     // } else {
     //     HttpResponse::Ok().json("No courses found for teacher".to_string())
     // }
-
-    HttpResponse::Ok().json("Success")
+    let teacher_id = i32::try_from(params.0).unwrap();
+    let courses = get_courses_for_teacher_db(&app_state.db, teacher_id).await;
+    HttpResponse::Ok().json(courses)
 }
 
 pub async fn get_course_detail(
     app_state: web::Data<AppState>,
-    params: web::Path<(usize, usize)>,
+    params: web::Path<(usize, usize)>
 ) -> HttpResponse {
     // let (teacher_id, course_id) = params.0;
     // let selected_course = app_state
@@ -81,8 +83,10 @@ pub async fn get_course_detail(
     //     Ok(course) => HttpResponse::Ok().json(course),
     //     Err(msg) => HttpResponse::Ok().json(msg)
     // }
-
-    HttpResponse::Ok().json("Success")
+    let teacher_id = i32::try_from(params.0).unwrap();
+    let course_id = i32::try_from(params.1).unwrap();
+    let course = get_course_detail_db(&app_state.db, teacher_id, course_id).await;
+    HttpResponse::Ok().json(course)
 }
 
 #[cfg(test)]
@@ -121,7 +125,7 @@ mod tests {
         let course = web::Json(Course {
             teacher_id: 1,
             name: "Test course".into(),
-            id: None,
+            id: Some(3),
             time: None,
         });
         let resp = new_course(course, app_state).await;

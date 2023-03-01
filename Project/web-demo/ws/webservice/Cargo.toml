@@ -11,7 +11,7 @@ actix-rt = "2.8.0"
 actix-web = "4.3.1"
 chrono = { version = "0.4.19", features = ["serde"] }
 dotenv = "0.15.0"
-# openssl = { version = "0.10.38", features = ["vendored"] }
+openssl = { version = "0.10.38", features = ["vendored"] }
 serde = { version = "1.0.134", features = ["derive"] }
 sqlx = { version = "0.6.2", features = [
     "postgres",

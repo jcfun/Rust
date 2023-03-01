@@ -2,7 +2,7 @@
  * @Author: jc-fun urainstar@gmail.com
  * @Date: 2023-02-28 12:56:05
  * @LastEditors: jc-fun urainstar@gmail.com
- * @LastEditTime: 2023-02-28 19:38:50
+ * @LastEditTime: 2023-03-01 13:04:42
  * @FilePath: /ws/webservice/src/bin/teacher-service.rs
  * @Description:
  */
@@ -24,6 +24,9 @@ mod state;
 
 #[path = "../models.rs"]
 mod models;
+
+#[path = "../db_access.rs"]
+mod db_access;
 
 use routers::*;
 use state::AppState;
