@@ -2,7 +2,7 @@
  * @Author: jc-fun urainstar@gmail.com
  * @Date: 2023-02-28 12:46:48
  * @LastEditors: jc-fun urainstar@gmail.com
- * @LastEditTime: 2023-03-02 14:35:26
+ * @LastEditTime: 2023-03-02 22:06:42
  * @FilePath: /ws/webservice/src/models/course.rs
  * @Description: 
  */
@@ -13,7 +13,7 @@ use serde::{Serialize, Deserialize};
 
 #[derive(Serialize, Debug, Clone, sqlx::FromRow)]
 pub struct Course {
-    pub id: Option<i32>,
+    pub id: i32,
     pub teacher_id: i32,
     pub name: String,
     pub time: Option<NaiveDateTime>,
@@ -40,13 +40,18 @@ pub struct CreateCourse {
     pub level: Option<String>,
 }
 
-impl From<web::Json<Course>> for Course {
-    fn from(course: web::Json<Course>) -> Self {
-        Course {
+impl From<web::Json<CreateCourse>> for CreateCourse {
+    fn from(course: web::Json<CreateCourse>) -> Self {
+        CreateCourse {
             teacher_id: course.teacher_id,
-            id: course.id,
             name: course.name.clone(),
-            time: course.time,
+            description: course.description.clone(),
+            format: course.format.clone(),
+            structure: course.structure.clone(),
+            duration: course.duration.clone(),
+            price: course.price,
+            language: course.language.clone(),
+            level: course.level.clone(),
         }
     }
 }
