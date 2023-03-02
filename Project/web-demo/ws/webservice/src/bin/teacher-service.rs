@@ -2,7 +2,7 @@
  * @Author: jc-fun urainstar@gmail.com
  * @Date: 2023-02-28 12:56:05
  * @LastEditors: jc-fun urainstar@gmail.com
- * @LastEditTime: 2023-03-01 13:04:42
+ * @LastEditTime: 2023-03-02 11:17:47
  * @FilePath: /ws/webservice/src/bin/teacher-service.rs
  * @Description:
  */
@@ -13,7 +13,7 @@ use std::env;
 use std::io;
 use std::sync::Mutex;
 
-#[path = "../handlers.rs"]
+#[path = "../handlers/mod.rs"]
 mod handlers;
 
 #[path = "../routers.rs"]
@@ -22,11 +22,14 @@ mod routers;
 #[path = "../state.rs"]
 mod state;
 
-#[path = "../models.rs"]
+#[path = "../models/mod.rs"]
 mod models;
 
-#[path = "../db_access.rs"]
+#[path = "../dbaccess/mod.rs"]
 mod db_access;
+
+#[path = "../errors.rs"]
+mod errors;
 
 use routers::*;
 use state::AppState;
