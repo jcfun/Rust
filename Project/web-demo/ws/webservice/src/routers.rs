@@ -2,7 +2,7 @@
  * @Author: jc-fun urainstar@gmail.com
  * @Date: 2023-02-28 12:46:54
  * @LastEditors: jc-fun urainstar@gmail.com
- * @LastEditTime: 2023-03-02 11:16:39
+ * @LastEditTime: 2023-03-03 18:36:30
  * @FilePath: /ws/webservice/src/routers.rs
  * @Description:
  */
@@ -16,8 +16,10 @@ pub fn general_routes(cfg: &mut web::ServiceConfig) {
 pub fn course_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("/courses")
-            .route("/", web::post().to(new_course))
+            .route("/", web::post().to(post_new_course))
             .route("/{teacher_id}", web::get().to(get_courses_for_teacher))
-            .route("/{teacher_id}/{course_id}", web::get().to(get_course_detail)),
+            .route("/{teacher_id}/{course_id}", web::get().to(get_course_detail))
+            .route("/{teacher_id}/{course_id}", web::delete().to(delete_course))
+            .route("/{teacher_id}/{course_id}", web::put().to(update_course_details)),
     );
 }

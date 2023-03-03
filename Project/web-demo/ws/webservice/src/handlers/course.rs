@@ -1,60 +1,23 @@
 use crate::{
     db_access::course::*,
     errors::MyError,
-    state::AppState,
+    state::AppState, models::course::{Course, CreateCourse, UpdateCourse},
 };
 
 use actix_web::{web, HttpResponse};
 
-use crate::models::course::Course;
-
-pub async fn new_course(
-    new_course: web::Json<Course>,
+pub async fn post_new_course(
+    new_course: web::Json<CreateCourse>,
     app_state: web::Data<AppState>,
 ) -> Result<HttpResponse, MyError> {
-    // println!("Received new course");
-    // let course_count = app_state
-    //     .courses
-    //     .lock()
-    //     .unwrap()
-    //     .clone()
-    //     .into_iter()
-    //     .filter(|course| course.teacher_id == new_course.teacher_id)
-    //     .collect::<Vec<Course>>()
-    //     .len();
-    // let new_course = Course {
-    //     teacher_id: new_course.teacher_id,
-    //     id: Some(course_count + 1),
-    //     name: new_course.name.clone(),
-    //     time: Some(Utc::now().naive_utc()),
-    // };
-
-    // app_state.courses.lock().unwrap().push(new_course);
-    // HttpResponse::Ok().json("Course added")
-    post_new_course_db(&app_state.db, new_course.into()).await.map(|course| HttpResponse::Ok().json(course))
+    
+    post_new_course_db(&app_state.db, new_course.try_into()?).await.map(|course| HttpResponse::Ok().json(course))
 }
 
 pub async fn get_courses_for_teacher(
     app_state: web::Data<AppState>,
-    params: web::Path<(usize,)>,
+    web::Path(teacher_id): web::Path<(i32)>,
 ) -> Result<HttpResponse, MyError> {
-    // let teacher_id: usize = params.0;
-
-    // let filtered_courses = app_state
-    //     .courses
-    //     .lock()
-    //     .unwrap()
-    //     .clone()
-    //     .into_iter()
-    //     .filter(|course| course.teacher_id == teacher_id)
-    //     .collect::<Vec<Course>>();
-
-    // if filtered_courses.len() > 0 {
-    //     HttpResponse::Ok().json(filtered_courses)
-    // } else {
-    //     HttpResponse::Ok().json("No courses found for teacher".to_string())
-    // }
-    let teacher_id = i32::try_from(params.0).unwrap();
     get_courses_for_teacher_db(&app_state.db, teacher_id)
         .await
         .map(|courses| HttpResponse::Ok().json(courses))
@@ -62,27 +25,30 @@ pub async fn get_courses_for_teacher(
 
 pub async fn get_course_detail(
     app_state: web::Data<AppState>,
-    params: web::Path<(usize, usize)>,
+    web::Path((teacher_id, course_id)): web::Path<(i32, i32)>,
 ) -> Result<HttpResponse, MyError> {
-    // let (teacher_id, course_id) = params.0;
-    // let selected_course = app_state
-    //     .courses
-    //     .lock()
-    //     .unwrap()
-    //     .clone()
-    //     .into_iter()
-    //     .find(|x| x.teacher_id == teacher_id && x.id == Some(course_id))
-    //     .ok_or("Course not found");
-
-    // match selected_course {
-    //     Ok(course) => HttpResponse::Ok().json(course),
-    //     Err(msg) => HttpResponse::Ok().json(msg)
-    // }
-    let teacher_id = i32::try_from(params.0).unwrap();
-    let course_id = i32::try_from(params.1).unwrap();
     get_course_detail_db(&app_state.db, teacher_id, course_id)
         .await
         .map(|course| HttpResponse::Ok().json(course))
+}
+
+pub async fn delete_course(
+    app_state: web::Data<AppState>,
+    web::Path((teacher_id, course_id)): web::Path<(i32, i32)>,
+) -> Result<HttpResponse, MyError> {
+    delete_course_db(&app_state.db, teacher_id, course_id)
+    .await
+    .map(|resp| HttpResponse::Ok().json(resp))
+}
+
+pub async fn update_course_details(
+    app_state: web::Data<AppState>,
+    update_course: web::Json<UpdateCourse>,
+    web::Path((teacher_id, course_id)): web::Path<(i32, i32)>,
+) -> Result<HttpResponse, MyError> {
+    update_course_details_db(&app_state.db, teacher_id, course_id, update_course)
+    .await
+    .map(|course| HttpResponse::Ok().json(course))
 }
 
 #[cfg(test)]
