@@ -1,8 +1,8 @@
 /*
  * @Author: jc-fun urainstar@gmail.com
  * @Date: 2023-02-28 12:46:48
- * @LastEditors: jc-fun urainstar@gmail.com
- * @LastEditTime: 2023-03-03 18:23:15
+ * @LastEditors: error: error: git config user.name & please set dead value or install git && error: git config user.email & please set dead value or install git & please set dead value or install git
+ * @LastEditTime: 2023-03-06 12:49:17
  * @FilePath: /ws/webservice/src/models/course.rs
  * @Description:
  */
@@ -14,9 +14,9 @@ use std::convert::TryFrom;
 
 #[derive(Serialize, Debug, Clone, sqlx::FromRow)]
 pub struct Course {
-    pub id: i32,
-    pub teacher_id: i32,
-    pub name: String,
+    pub id: Option<i32>,
+    pub teacher_id: Option<i32>,
+    pub name: Option<String>,
     pub time: Option<NaiveDateTime>,
     pub description: Option<String>,
     pub format: Option<String>,

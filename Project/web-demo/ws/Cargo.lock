@@ -1796,6 +1796,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "webapp"
+version = "0.1.0"
+
+[[package]]
 name = "webpki"
 version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

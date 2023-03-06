@@ -1,3 +1,11 @@
+/*
+ * @Author: jcfun jcfunstar@gmail.com
+ * @Date: 2023-03-05 21:54:22
+ * @LastEditors: jcfun jcfunstar@gmail.com
+ * @LastEditTime: 2023-03-06 16:51:48
+ * @FilePath: /ws/webservice/src/errors.rs
+ * @Description: 
+ */
 use actix_web::{ error, http::StatusCode, HttpResponse, Result };
 use serde::Serialize;
 use sqlx::error::Error as SQLxError;
@@ -8,6 +16,7 @@ pub enum MyError {
     DBError(String),
     ActixError(String),
     NotFound(String),
+    InvalidInput(String),
 }
 
 #[derive(Debug, Serialize)]
@@ -30,6 +39,10 @@ impl MyError {
                 println!("Not found error occurred: {:?}", msg);
                 msg.into()
             }
+            MyError::InvalidInput(msg) => {
+                println!("Invalid parameters received: {:?}", msg);
+                msg.into()
+            }
         }
     }
 }
@@ -39,6 +52,7 @@ impl error::ResponseError for MyError {
         match self {
             MyError::DBError(_msg) | MyError::ActixError(_msg) => StatusCode::INTERNAL_SERVER_ERROR,
             MyError::NotFound(_msg) => StatusCode::NOT_FOUND,
+            MyError::InvalidInput(_msg) => StatusCode::BAD_REQUEST,
         }
     }
 

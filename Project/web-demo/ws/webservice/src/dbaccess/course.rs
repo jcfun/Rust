@@ -1,15 +1,14 @@
 /*
  * @Author: jc-fun urainstar@gmail.com
  * @Date: 2023-03-01 09:48:31
- * @LastEditors: jc-fun urainstar@gmail.com
- * @LastEditTime: 2023-03-03 18:34:16
+ * @LastEditors: jcfun jcfunstar@gmail.com
+ * @LastEditTime: 2023-03-06 14:43:29
  * @FilePath: /ws/webservice/src/dbaccess/course.rs
  * @Description:
  */
 use crate::errors::MyError;
-use crate::models::course::{Course, UpdateCourse};
-use chrono::NaiveDateTime;
-use sqlx::postgres::PgPool;
+use crate::models::course::{Course, UpdateCourse, CreateCourse};
+use sqlx::postgres::PgPool;  
 
 pub async fn get_courses_for_teacher_db(
     pool: &PgPool,
@@ -46,7 +45,7 @@ pub async fn get_course_detail_db(
     }
 }
 
-pub async fn post_new_course_db(pool: &PgPool, new_course: Course) -> Result<Course, MyError> {
+pub async fn post_new_course_db(pool: &PgPool, new_course: CreateCourse) -> Result<Course, MyError> {
     let row = sqlx
         ::query_as!(
             Course,
@@ -92,43 +91,43 @@ pub async fn update_course_details_db(
     .await
     .map_err(|_err| MyError::NotFound("Course Id not found".into()))?;
 
-    let name: String = if let Some(name) = update_course.name {
-        name
+    let name = if let Some(name) = update_course.name {
+        Some(name)
     } else {
         current_course_row.name
     };
-    let description: String = if let Some(description) = update_course.description {
-        description
+    let description = if let Some(description) = update_course.description {
+        Some(description)
     } else {
         current_course_row.description
     };
-    let format: String = if let Some(format) = update_course.format {
-        format
+    let format = if let Some(format) = update_course.format {
+        Some(format)
     } else {
         current_course_row.format
     };
-    let structure: String = if let Some(structure) = update_course.structure {
-        structure
+    let structure = if let Some(structure) = update_course.structure {
+        Some(structure)
     } else {
         current_course_row.structure
     };
-    let duration: String = if let Some(duration) = update_course.duration {
-        duration
+    let duration = if let Some(duration) = update_course.duration {
+        Some(duration)
     } else {
         current_course_row.duration
     };
-    let price: i32 = if let Some(price) = update_course.price {
-        price
+    let price = if let Some(price) = update_course.price {
+        Some(price)
     } else {
         current_course_row.price
     };
-    let language: String = if let Some(language) = update_course.language {
-        language
+    let language = if let Some(language) = update_course.language {
+        Some(language)
     } else {
         current_course_row.language
     };
-    let level: String = if let Some(level) = update_course.level {
-        level
+    let level = if let Some(level) = update_course.level {
+        Some(level)
     } else {
         current_course_row.level
     };

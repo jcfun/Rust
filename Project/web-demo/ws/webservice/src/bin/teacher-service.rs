@@ -1,8 +1,8 @@
 /*
  * @Author: jc-fun urainstar@gmail.com
  * @Date: 2023-02-28 12:56:05
- * @LastEditors: jc-fun urainstar@gmail.com
- * @LastEditTime: 2023-03-02 11:17:47
+ * @LastEditors: jcfun jcfunstar@gmail.com
+ * @LastEditTime: 2023-03-06 16:55:37
  * @FilePath: /ws/webservice/src/bin/teacher-service.rs
  * @Description:
  */
@@ -12,6 +12,9 @@ use sqlx::postgres::PgPoolOptions;
 use std::env;
 use std::io;
 use std::sync::Mutex;
+use routers::*;
+use state::AppState;
+use crate::errors::MyError;
 
 #[path = "../handlers/mod.rs"]
 mod handlers;
@@ -31,9 +34,6 @@ mod db_access;
 #[path = "../errors.rs"]
 mod errors;
 
-use routers::*;
-use state::AppState;
-
 #[actix_rt::main]
 async fn main() -> io::Result<()> {
     dotenv().ok();
@@ -51,9 +51,13 @@ async fn main() -> io::Result<()> {
     let app = move || {
         App::new()
             .app_data(shared_data.clone())
+            .app_data(web::JsonConfig::default().error_handler(|_err, _req| {
+                MyError::InvalidInput("Please provide valid Json input".to_string()).into()
+            }))
             .configure(general_routes)
             .configure(course_routes)
+            .configure(teacher_routes)
     };
-
-    HttpServer::new(app).bind("127.0.0.1:3000")?.run().await
+    println!("正在监听3000端口...");
+    HttpServer::new(app).bind("::0:3000")?.run().await
 }
