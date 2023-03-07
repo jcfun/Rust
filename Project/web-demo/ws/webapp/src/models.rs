@@ -2,7 +2,7 @@
  * @Author: jcfun jcfunstar@gmail.com
  * @Date: 2023-03-07 09:13:14
  * @LastEditors: jcfun jcfunstar@gmail.com
- * @LastEditTime: 2023-03-07 16:29:13
+ * @LastEditTime: 2023-03-07 21:19:13
  * @FilePath: /ws/webapp/src/model.rs
  * @Description: 
  */
@@ -18,6 +18,6 @@ pub struct TeacherRegisterForm {
 pub struct TeacherResponse {
     pub id: i32,
     pub name: String,
-    pub picture_id: String,
+    pub picture_url: String,
     pub profile: String,
 }

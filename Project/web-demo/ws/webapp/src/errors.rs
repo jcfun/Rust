@@ -2,7 +2,7 @@
  * @Author: jcfun jcfunstar@gmail.com
  * @Date: 2023-03-07 16:55:29
  * @LastEditors: jcfun jcfunstar@gmail.com
- * @LastEditTime: 2023-03-07 18:40:02
+ * @LastEditTime: 2023-03-07 20:53:59
  * @FilePath: /ws/webapp/src/errors.rs
  * @Description: 
  */
