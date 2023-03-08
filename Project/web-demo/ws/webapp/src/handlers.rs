@@ -2,7 +2,7 @@
  * @Author: jcfun jcfunstar@gmail.com
  * @Date: 2023-03-07 16:43:25
  * @LastEditors: jcfun jcfunstar@gmail.com
- * @LastEditTime: 2023-03-07 22:05:36
+ * @LastEditTime: 2023-03-08 14:31:14
  * @FilePath: /ws/webapp/src/handlers.rs
  * @Description:
  */
@@ -51,9 +51,16 @@ pub async fn handler_register(
 ) -> Result<HttpResponse, Error> {
     let mut ctx = tera::Context::new();
     let s;
-    if params.name == "Dave" {
-        ctx.insert("error", "Dave already exists!");
-
+    if params.name == ""  || params.image_url == "" || params.profile == "" {
+        ctx.insert("error", "Params can't be empty!");
+        ctx.insert("current_name", &params.name);
+        ctx.insert("current_image_url", &params.image_url);
+        ctx.insert("current_profile", &params.profile);
+        s = tmpl
+            .render("register.html", &ctx)
+            .map_err(|_| MyError::TeraError("Template error".to_string()));
+    } else if params.name == "Dave" {
+        ctx.insert("error", "Dave already exists!Params can't be empty!");
         ctx.insert("current_name", &params.name);
         ctx.insert("current_image_url", &params.image_url);
         ctx.insert("current_profile", &params.profile);
