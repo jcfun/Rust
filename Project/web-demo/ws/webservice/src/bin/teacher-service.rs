@@ -2,10 +2,12 @@
  * @Author: jc-fun urainstar@gmail.com
  * @Date: 2023-02-28 12:56:05
  * @LastEditors: jcfun jcfunstar@gmail.com
- * @LastEditTime: 2023-03-06 16:55:37
+ * @LastEditTime: 2023-03-08 22:40:45
  * @FilePath: /ws/webservice/src/bin/teacher-service.rs
  * @Description:
  */
+use actix_cors::Cors;
+use actix_web::http;
 use actix_web::{web, App, HttpServer};
 use dotenv::dotenv;
 use sqlx::postgres::PgPoolOptions;
@@ -49,6 +51,11 @@ async fn main() -> io::Result<()> {
     });
 
     let app = move || {
+        let cors = Cors::default().allow_any_origin().allowed_methods(vec!["GET", "POST"])
+        .allowed_headers(vec![http::header::AUTHORIZATION, http::header::ACCEPT])
+        .allowed_header(http::header::CONTENT_TYPE)
+        .max_age(3600);
+    
         App::new()
             .app_data(shared_data.clone())
             .app_data(web::JsonConfig::default().error_handler(|_err, _req| {
@@ -56,8 +63,10 @@ async fn main() -> io::Result<()> {
             }))
             .configure(general_routes)
             .configure(course_routes)
+            .wrap(cors)
             .configure(teacher_routes)
+            
     };
     println!("正在监听3000端口...");
-    HttpServer::new(app).bind("::0:3000")?.run().await
+    HttpServer::new(app).bind(":::3000")?.run().await
 }
