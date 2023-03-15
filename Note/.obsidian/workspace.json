@@ -11,12 +11,8 @@
             "id": "323aa07820369903",
             "type": "leaf",
             "state": {
-              "type": "markdown",
-              "state": {
-                "file": "Rust.md",
-                "mode": "source",
-                "source": false
-              }
+              "type": "empty",
+              "state": {}
             }
           }
         ]
@@ -101,9 +97,7 @@
             "type": "leaf",
             "state": {
               "type": "outline",
-              "state": {
-                "file": "Rust.md"
-              }
+              "state": {}
             }
           },
           {
@@ -112,7 +106,6 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "Rust.md",
                 "collapseAll": true,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
