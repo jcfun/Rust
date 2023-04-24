@@ -9,7 +9,7 @@
 
 这里用并发一词代表 concurrency 和 parallelism
 
-![concurrent_parallel](assets\concurrent_parallel.png)
+![concurrent_parallel](./assets/concurrent_parallel.png)
 
 ### 1.2 为什么要让程序不按顺序执行
 
@@ -29,7 +29,7 @@
 
 ### 1.3 同步、多行程、异步的区别
 
-![sync_thread_async](assets\sync_thread_async.png)
+![sync_thread_async](assets/sync_thread_async.png)
 
 这里面 Task1 包含三个步骤
 

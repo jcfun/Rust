@@ -5871,7 +5871,7 @@ error: could not compile `closure-example` due to previous error
 
 #### 13.1.3 使用泛型参数和 fn trait 来存储闭包
 
-+ 另一中解决方案
++ 另一种解决方案
 + 创建一个`struct`，它持有闭包及其调用结果
   + 只会在需要结果时才执行该闭包
   + 可缓存结果
@@ -9839,7 +9839,7 @@ fn generic<T: ?Sized>(t: &T) {
 
   + 可以直接指定`fn`为参数类型，不用声明一个以`Fn trait`为约束的泛型参数
 
-+ 函数指针实现了全部 3 中闭包 trait（Fn, FnMut, FnOnce）
++ 函数指针实现了全部 3 种闭包 trait（Fn, FnMut, FnOnce）
 
   + 总是可以把函数指针作为参数传递给一个接受闭包的函数
   + 所以，倾向于搭配闭包 trait 的泛型来编写函数：可以同时接受闭包和普通函数

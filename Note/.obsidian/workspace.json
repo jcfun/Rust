@@ -4,15 +4,19 @@
     "type": "split",
     "children": [
       {
-        "id": "4a8d640e16122988",
+        "id": "603fb60b8bf9cc3a",
         "type": "tabs",
         "children": [
           {
-            "id": "323aa07820369903",
+            "id": "3837af7b7cbd7a46",
             "type": "leaf",
             "state": {
-              "type": "empty",
-              "state": {}
+              "type": "markdown",
+              "state": {
+                "file": "Async.md",
+                "mode": "source",
+                "source": false
+              }
             }
           }
         ]
@@ -39,14 +43,6 @@
             }
           },
           {
-            "id": "dc0911e6cccda634",
-            "type": "leaf",
-            "state": {
-              "type": "quiet-outline",
-              "state": {}
-            }
-          },
-          {
             "id": "6121c8821fd3969e",
             "type": "leaf",
             "state": {
@@ -61,8 +57,7 @@
               }
             }
           }
-        ],
-        "currentTab": 1
+        ]
       }
     ],
     "direction": "horizontal",
@@ -97,7 +92,9 @@
             "type": "leaf",
             "state": {
               "type": "outline",
-              "state": {}
+              "state": {
+                "file": "Async.md"
+              }
             }
           },
           {
@@ -106,6 +103,7 @@
             "state": {
               "type": "backlink",
               "state": {
+                "file": "Async.md",
                 "collapseAll": true,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -141,8 +139,11 @@
       "table-editor-obsidian:Advanced Tables Toolbar": false
     }
   },
-  "active": "ed375e7c203d6bef",
+  "active": "3837af7b7cbd7a46",
   "lastOpenFiles": [
+    "assets/concurrent_parallel.png 1.md",
+    "Async.md",
+    "assets/concurrent_parallel.png.md",
     "assets/&String_s_pointing_at_String_s1.svg",
     "Rust.md",
     "assets/the_same_value.svg",
