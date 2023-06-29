@@ -131,7 +131,7 @@
             }
           }
         ],
-        "currentTab": 1
+        "currentTab": 2
       }
     ],
     "direction": "horizontal",
@@ -147,7 +147,7 @@
       "table-editor-obsidian:Advanced Tables Toolbar": false
     }
   },
-  "active": "3837af7b7cbd7a46",
+  "active": "f5934f012c17e870",
   "lastOpenFiles": [
     "assets/concurrent_parallel.png 1.md",
     "Async.md",
